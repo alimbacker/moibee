@@ -641,7 +641,7 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
       `}</style>
 
       {/* Sidebar */}
-      <div className="no-print" style={{ width:240,background:t.sidebarBg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",padding:"20px 0",position:"fixed",top:0,left:sidebarOpen?0:-240,height:"100vh",zIndex:200,transition:"left 0.3s ease",..( window.innerWidth>=768?{left:0}:{}) }}>
+      <div className="no-print" style={{ width:240,background:t.sidebarBg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",padding:"20px 0",position:"fixed",top:0,left:sidebarOpen?0:-240,height:"100vh",zIndex:200,transition:"left 0.3s ease" }}>
         <div style={{ padding:"0 16px 16px",borderBottom:`1px solid ${t.border}`,marginBottom:12 }}>
           <button onClick={onBack} style={{ display:"flex",alignItems:"center",gap:8,background:t.surface2,border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 12px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,marginBottom:14,width:"100%" }}>
             <Icon name="back" size={13}/> All Events
@@ -680,7 +680,7 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
         <div className="no-print" style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"13px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
           <div style={{ display:"flex",alignItems:"center",gap:14 }}>
             <button className="mob-btn" onClick={()=>setSidebarOpen(!sidebarOpen)} style={{ background:"none",border:"none",color:t.textMid,cursor:"pointer",padding:4,display:"none" }}><Icon name="menu" size={22}/></button>
-            <style>{`@media(max-width:768px){.mob-btn{display:block!important}}`}</style>
+            <style>{`@media(max-width:768px){.mob-btn{display:block!important}.no-print{left:0!important}}@media(min-width:769px){.no-print{left:0!important}}`}</style>
             <div>
               <div style={{ fontSize:16,fontWeight:700,color:t.text }}>{navItems.find(n=>n.id===page)?.label}</div>
               <div style={{ fontSize:11,color:t.textMuted }}>{event.name} · {entries.length} entries</div>
