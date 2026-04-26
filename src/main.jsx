@@ -2,7 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { useState, useEffect, useCallback } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, where } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
 
 // ─── Firebase ─────────────────────────────────────────────────────────
 const firebaseConfig = {
@@ -13,9 +14,9 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
-const app = initializeApp(firebaseConfig);
-const db  = getFirestore(app);
-
+const app  = initializeApp(firebaseConfig);
+const db   = getFirestore(app);
+const auth = getAuth(app);
 // ─── Helpers ──────────────────────────────────────────────────────────
 const formatCurrency = (n) => "₹" + Number(n||0).toLocaleString("en-IN");
 const formatDate = (iso) => iso ? new Date(iso).toLocaleString("en-IN", { dateStyle:"medium", timeStyle:"short" }) : "—";
@@ -178,77 +179,23 @@ const ThemeToggle = ({ theme, toggleTheme }) => (
 );
 
 // ─── LOGIN ────────────────────────────────────────────────────────────
-function LoginPage({ onLogin, theme, toggleTheme }) {
-  const [user,setUser]=useState(""); const [pass,setPass]=useState(""); const [err,setErr]=useState("");
-  const [settings,setSettings]=useState(DEFAULT_SETTINGS);
-  const t=THEMES[theme];
-  useEffect(()=>{
-    const unsub=onSnapshot(doc(db,"config","settings"),snap=>{ if(snap.exists()) setSettings({...DEFAULT_SETTINGS,...snap.data()}); });
-    return unsub;
-  },[]);
-  const handleLogin=()=>{
-    if(user===settings.adminUser&&pass===settings.adminPass){ save("moibee_auth",{loggedIn:true}); onLogin(); }
-    else setErr("Invalid credentials. Please try again.");
-  };
-  return (
-    <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora','Segoe UI',sans-serif",padding:16 }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap'); @keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}} *{box-sizing:border-box}`}</style>
-      <div style={{ position:"fixed",top:20,right:20 }}><ThemeToggle theme={theme} toggleTheme={toggleTheme}/></div>
-      <div style={{ width:"100%",maxWidth:400,animation:"fadeUp 0.5s ease" }}>
-        <div style={{ textAlign:"center",marginBottom:36 }}>
-          <div style={{ display:"inline-flex",alignItems:"center",gap:14 }}>
-            <MoiBeeLogo size={52}/>
-            <div style={{ textAlign:"left" }}>
-              <div style={{ fontSize:22,fontWeight:800 }}><span style={{ color:"#0F9DAD" }}>moi</span><span style={{ color:t.text }}>BEE</span></div>
-              <div style={{ fontSize:10,color:"#0F9DAD",fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase" }}>Track Every Blessing</div>
-              <div style={{ fontSize:10,color:t.textDim,marginTop:2 }}>Powered by AllBee Solutions</div>
-            </div>
-          </div>
-        </div>
-        <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:20,padding:32,boxShadow:"0 24px 80px rgba(0,0,0,0.12)" }}>
-          <h2 style={{ color:t.text,fontSize:20,fontWeight:700,marginBottom:4,marginTop:0 }}>Welcome back</h2>
-          <p style={{ color:t.textMuted,fontSize:13,marginBottom:24,marginTop:0 }}>Sign in to manage your events</p>
-          <Input label="Username" value={user} onChange={setUser} placeholder="admin" required th={t}/>
-          <Input label="Password" value={pass} onChange={setPass} type="password" placeholder="••••••••" required th={t}/>
-          {err&&<div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"10px 14px",color:"#fca5a5",fontSize:13,marginBottom:14 }}>{err}</div>}
-          <button onClick={handleLogin} style={{ width:"100%",background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"13px 0",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 20px rgba(15,157,173,0.4)" }}>Sign In →</button>
-        </div>
-        <div style={{ textAlign:"center",marginTop:20,color:t.textDim,fontSize:11 }}>🐝 Powered by AllBee Solutions</div>
-      </div>
-    </div>
-  );
-}
-
 // ══════════════════════════════════════════════════════════════════════
 // ─── EVENTS HUB (home screen after login) ────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
-function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t }) {
-  const [events,    setEvents]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [tab,       setTab]       = useState("active"); // "active" | "completed"
+function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, visibleEvents, allEvents, addToast }) {
+  const events = visibleEvents || [];
+  const loading = false;
+  const [tab,       setTab]       = useState("active");
   const [showCreate,setShowCreate]= useState(false);
   const [showEdit,  setShowEdit]  = useState(null);
   const [deleteConfirm,setDeleteConfirm] = useState(null);
   const [completeConfirm,setCompleteConfirm] = useState(null);
   const [online,    setOnline]    = useState(navigator.onLine);
-  const [toasts,    setToasts]    = useState([]);
 
   useEffect(()=>{
     const on=()=>setOnline(true),off=()=>setOnline(false);
     window.addEventListener("online",on); window.addEventListener("offline",off);
     return ()=>{ window.removeEventListener("online",on); window.removeEventListener("offline",off); };
-  },[]);
-
-  useEffect(()=>{
-    const q=query(collection(db,"events"),orderBy("createdAt","desc"));
-    const unsub=onSnapshot(q,snap=>{ setEvents(snap.docs.map(d=>({id:d.id,...d.data()}))); setLoading(false); },()=>setLoading(false));
-    return unsub;
-  },[]);
-
-  const addToast=useCallback((msg,type="success")=>{
-    const id=Date.now().toString();
-    setToasts(t=>[...t,{id,msg,type}]);
-    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3500);
   },[]);
 
   const handleDelete = async (ev) => {
@@ -348,39 +295,8 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t }) {
   };
 
   return (
-    <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'Sora','Segoe UI',sans-serif",color:t.text }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
-        @keyframes slideIn{from{transform:translateX(40px);opacity:0}to{transform:translateX(0);opacity:1}}
-        @keyframes fadeUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        *{box-sizing:border-box}
-        ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:${t.bg}} ::-webkit-scrollbar-thumb{background:${t.scrollbar};border-radius:3px}
-        select option{background:${t.surface};color:${t.text}}
-      `}</style>
-
-      {/* Topbar */}
-      <div style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"14px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-          <MoiBeeLogo size={34}/>
-          <div>
-            <div style={{ fontSize:18,fontWeight:800 }}><span style={{ color:"#0F9DAD" }}>moi</span><span style={{ color:t.text }}>BEE</span></div>
-            <div style={{ fontSize:9,color:"#0F9DAD",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase" }}>Track Every Blessing</div>
-          </div>
-        </div>
-        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          <div style={{ display:"flex",alignItems:"center",gap:6,fontSize:12,color:online?"#10b981":"#ef4444",fontWeight:600 }}>
-            <div style={{ width:7,height:7,borderRadius:"50%",background:online?"#10b981":"#ef4444",boxShadow:online?"0 0 6px #10b981":"none" }}/>
-            {online?"Synced":"Offline"}
-          </div>
-          <ThemeToggle theme={theme} toggleTheme={toggleTheme}/>
-          <button onClick={onLogout} style={{ display:"flex",alignItems:"center",gap:7,background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"7px 14px",color:t.textMuted,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>
-            <Icon name="logout" size={14}/> Sign Out
-          </button>
-        </div>
-      </div>
-
-      <div style={{ maxWidth:1100,margin:"0 auto",padding:"28px 24px" }}>
+    <div style={{ animation:"fadeUp 0.4s ease" }}>
+      <div>
 
         {/* Summary strip */}
         {!loading && events.length>0 && (
@@ -418,9 +334,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t }) {
             ))}
           </div>
 
-          <button onClick={()=>setShowCreate(true)} style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"11px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}>
-            <Icon name="add" size={16}/> New Event
-          </button>
+          {isAdmin && <button onClick={()=>setShowCreate(true)} style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"11px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}><Icon name="add" size={16}/> New Event</button>}
         </div>
 
         {/* Loading */}
@@ -471,7 +385,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t }) {
       </div>
 
       {/* Create / Edit Modal */}
-      <EventFormModal open={showCreate||!!showEdit} editEvent={showEdit} onClose={()=>{setShowCreate(false);setShowEdit(null);}} addToast={addToast} t={t}/>
+      {isAdmin && <EventFormModal open={showCreate||!!showEdit} editEvent={showEdit} onClose={()=>{setShowCreate(false);setShowEdit(null);}} addToast={addToast} t={t}/>}
 
       {/* Mark Complete Confirm */}
       <Modal open={!!completeConfirm} onClose={()=>setCompleteConfirm(null)} title="Mark as Completed?" th={t}>
@@ -506,7 +420,6 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t }) {
         </div>
       </Modal>
 
-      <Toast toasts={toasts}/>
     </div>
   );
 }
@@ -1144,33 +1057,521 @@ function EventSettingsPage({ event, addToast, t }) {
 // ══════════════════════════════════════════════════════════════════════
 // ─── ROOT APP ─────────────────────────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
-function MoiBee() {
-  const [loggedIn,setLoggedIn]     = useState(()=>load("moibee_auth",null)?.loggedIn===true);
-  const [activeEvent,setActiveEvent] = useState(null);
-  const [theme,setTheme]           = useState(()=>load("moibee_theme","dark"));
+
+// ══════════════════════════════════════════════════════════════════════
+// ─── AUTH PAGES ───────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+
+// ─── Auth Card wrapper ────────────────────────────────────────────────
+const AuthCard = ({ title, subtitle, children, t }) => (
+  <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:20,padding:34,boxShadow:"0 24px 80px rgba(0,0,0,0.12)" }}>
+    <h2 style={{ color:t.text,fontSize:20,fontWeight:700,marginBottom:4,marginTop:0 }}>{title}</h2>
+    {subtitle && <p style={{ color:t.textMuted,fontSize:13,marginBottom:24,marginTop:0 }}>{subtitle}</p>}
+    {children}
+  </div>
+);
+
+// ─── LOGIN PAGE ───────────────────────────────────────────────────────
+function LoginPage({ theme, toggleTheme }) {
+  const [tab,    setTab]    = useState("login"); // login | register | reset
+  const [email,  setEmail]  = useState("");
+  const [pass,   setPass]   = useState("");
+  const [name,   setName]   = useState("");
+  const [err,    setErr]    = useState("");
+  const [msg,    setMsg]    = useState("");
+  const [loading,setLoading]= useState(false);
   const t = THEMES[theme];
-  const toggleTheme = () => { const n=theme==="dark"?"light":"dark"; setTheme(n); save("moibee_theme",n); };
 
-  if(!loggedIn) return <LoginPage onLogin={()=>setLoggedIn(true)} theme={theme} toggleTheme={toggleTheme}/>;
+  const handleLogin = async () => {
+    if(!email||!pass){ setErr("Please fill in all fields"); return; }
+    setLoading(true); setErr("");
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), pass);
+      // onAuthStateChanged in MoiBee will handle the rest
+    } catch(e) {
+      setErr(e.code==="auth/invalid-credential"||e.code==="auth/wrong-password"||e.code==="auth/user-not-found"
+        ? "Invalid email or password." : e.code==="auth/too-many-requests"
+        ? "Too many attempts. Try again later." : e.message);
+    }
+    setLoading(false);
+  };
 
-  if(activeEvent) return (
-    <EventApp
-      event={activeEvent}
-      theme={theme}
-      toggleTheme={toggleTheme}
-      onBack={()=>setActiveEvent(null)}
-      t={t}
-    />
+  const handleRegister = async () => {
+    if(!name.trim()||!email||!pass){ setErr("Please fill in all fields"); return; }
+    if(pass.length<6){ setErr("Password must be at least 6 characters"); return; }
+    setLoading(true); setErr("");
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+      // Create user profile in Firestore — pending approval
+      await setDoc(doc(db,"users",cred.user.uid), {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        role: "user",
+        status: "pending", // pending | approved | rejected
+        assignedEvents: [],
+        createdAt: new Date().toISOString(),
+      });
+      await signOut(auth);
+      setMsg("✅ Account created! Please wait for admin approval before logging in.");
+      setTab("login");
+      setEmail(""); setPass(""); setName("");
+    } catch(e) {
+      setErr(e.code==="auth/email-already-in-use" ? "This email is already registered." : e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleReset = async () => {
+    if(!email){ setErr("Enter your email address"); return; }
+    setLoading(true); setErr("");
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setMsg("✅ Password reset email sent! Check your inbox.");
+      setTab("login");
+    } catch(e) { setErr(e.message); }
+    setLoading(false);
+  };
+
+  const Btn = ({ onClick, label, color="#0F9DAD" }) => (
+    <button onClick={onClick} disabled={loading} style={{ width:"100%",background:loading?t.border:`linear-gradient(135deg,${color},${color}cc)`,border:"none",borderRadius:12,padding:"13px 0",color:loading?t.textMuted:"#fff",fontSize:15,fontWeight:700,cursor:loading?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:loading?"none":`0 4px 20px ${color}44`,marginTop:4 }}>
+      {loading?"Please wait...":label}
+    </button>
+  );
+
+  const FInput = ({ label,value,onChange,type="text",placeholder="" }) => (
+    <div style={{ marginBottom:14 }}>
+      <label style={{ display:"block",fontSize:11,fontWeight:600,color:t.textMuted,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.05em" }}>{label}</label>
+      <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+        onKeyDown={e=>{ if(e.key==="Enter"){ tab==="login"?handleLogin():tab==="register"?handleRegister():handleReset(); }}}
+        style={{ width:"100%",background:t.inputBg,border:`1.5px solid ${t.border}`,borderRadius:10,padding:"11px 14px",color:t.text,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:"inherit" }}
+        onFocus={e=>e.target.style.borderColor="#0F9DAD"} onBlur={e=>e.target.style.borderColor=t.border}/>
+    </div>
   );
 
   return (
-    <EventsHub
-      theme={theme}
-      toggleTheme={toggleTheme}
-      onSelectEvent={setActiveEvent}
-      onLogout={()=>{ save("moibee_auth",{loggedIn:false}); setLoggedIn(false); }}
-      t={t}
-    />
+    <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora','Segoe UI',sans-serif",padding:16 }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap'); *{box-sizing:border-box} @keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
+      <div style={{ position:"fixed",top:20,right:20 }}><ThemeToggle theme={theme} toggleTheme={toggleTheme}/></div>
+      <div style={{ width:"100%",maxWidth:420,animation:"fadeUp 0.5s ease" }}>
+        {/* Logo */}
+        <div style={{ textAlign:"center",marginBottom:32 }}>
+          <div style={{ display:"inline-flex",alignItems:"center",gap:14 }}>
+            <MoiBeeLogo size={50}/>
+            <div style={{ textAlign:"left" }}>
+              <div style={{ fontSize:22,fontWeight:800 }}><span style={{ color:"#0F9DAD" }}>moi</span><span style={{ color:t.text }}>BEE</span></div>
+              <div style={{ fontSize:10,color:"#0F9DAD",fontWeight:700,letterSpacing:"0.18em",textTransform:"uppercase" }}>Track Every Blessing</div>
+              <div style={{ fontSize:10,color:t.textDim,marginTop:2 }}>Powered by AllBee Solutions</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tab switcher */}
+        <div style={{ display:"flex",background:t.surface,border:`1px solid ${t.border}`,borderRadius:12,padding:4,gap:3,marginBottom:20 }}>
+          {[["login","Sign In"],["register","Register"]].map(([k,l])=>(
+            <button key={k} onClick={()=>{setTab(k);setErr("");setMsg("");}}
+              style={{ flex:1,padding:"9px 0",borderRadius:9,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,
+                background:tab===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",
+                color:tab===k?"#fff":t.textMuted,transition:"all 0.2s" }}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {msg && <div style={{ background:"#10b98118",border:"1px solid #10b98144",borderRadius:10,padding:"11px 14px",color:"#10b981",fontSize:13,fontWeight:500,marginBottom:16 }}>{msg}</div>}
+
+        {tab==="login" && (
+          <AuthCard title="Welcome back" subtitle="Sign in to your MoiBee account" t={t}>
+            <FInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@email.com"/>
+            <FInput label="Password" value={pass} onChange={setPass} type="password" placeholder="••••••••"/>
+            {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
+            <Btn onClick={handleLogin} label="Sign In →"/>
+            <div style={{ textAlign:"center",marginTop:14 }}>
+              <button onClick={()=>{setTab("reset");setErr("");}} style={{ background:"none",border:"none",color:t.textDim,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Forgot password?</button>
+            </div>
+          </AuthCard>
+        )}
+
+        {tab==="register" && (
+          <AuthCard title="Create account" subtitle="Register to access MoiBee — admin will approve your account" t={t}>
+            <FInput label="Your Name" value={name} onChange={setName} placeholder="Full name"/>
+            <FInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@email.com"/>
+            <FInput label="Password" value={pass} onChange={setPass} type="password" placeholder="Min 6 characters"/>
+            {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
+            <Btn onClick={handleRegister} label="Create Account →"/>
+            <div style={{ background:"#f59e0b12",border:"1px solid #f59e0b33",borderRadius:8,padding:"9px 13px",color:"#f59e0b",fontSize:12,marginTop:12,textAlign:"center" }}>
+              ⏳ New accounts need admin approval before first login
+            </div>
+          </AuthCard>
+        )}
+
+        {tab==="reset" && (
+          <AuthCard title="Reset password" subtitle="Enter your email to receive a reset link" t={t}>
+            <FInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@email.com"/>
+            {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
+            <Btn onClick={handleReset} label="Send Reset Email"/>
+            <div style={{ textAlign:"center",marginTop:12 }}>
+              <button onClick={()=>{setTab("login");setErr("");}} style={{ background:"none",border:"none",color:t.textDim,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>← Back to Sign In</button>
+            </div>
+          </AuthCard>
+        )}
+
+        <div style={{ textAlign:"center",marginTop:22,color:t.textDim,fontSize:11 }}>🐝 Powered by AllBee Solutions</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── PENDING APPROVAL PAGE ────────────────────────────────────────────
+function PendingPage({ theme, toggleTheme, userProfile }) {
+  const t = THEMES[theme];
+  return (
+    <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora','Segoe UI',sans-serif",padding:16 }}>
+      <div style={{ position:"fixed",top:20,right:20 }}><ThemeToggle theme={theme} toggleTheme={toggleTheme}/></div>
+      <div style={{ textAlign:"center",maxWidth:400 }}>
+        <div style={{ fontSize:56,marginBottom:16 }}>⏳</div>
+        <div style={{ fontSize:22,fontWeight:800,color:t.text,marginBottom:8 }}>Account Pending Approval</div>
+        <div style={{ fontSize:14,color:t.textMuted,marginBottom:24,lineHeight:1.7 }}>
+          Hi <strong style={{ color:t.text }}>{userProfile?.name}</strong>, your account is waiting for admin approval.<br/>
+          You'll be able to log in once an admin approves your account.
+        </div>
+        <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,padding:20,marginBottom:20,fontSize:13,color:t.textMuted }}>
+          📧 <strong>{userProfile?.email}</strong>
+        </div>
+        <button onClick={()=>signOut(auth)} style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 24px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:13 }}>Sign Out</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── REJECTED PAGE ────────────────────────────────────────────────────
+function RejectedPage({ theme, toggleTheme }) {
+  const t = THEMES[theme];
+  return (
+    <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora','Segoe UI',sans-serif",padding:16 }}>
+      <div style={{ textAlign:"center",maxWidth:400 }}>
+        <div style={{ fontSize:56,marginBottom:16 }}>❌</div>
+        <div style={{ fontSize:22,fontWeight:800,color:t.text,marginBottom:8 }}>Account Not Approved</div>
+        <div style={{ fontSize:14,color:t.textMuted,marginBottom:24 }}>Your account request was not approved. Please contact the admin.</div>
+        <button onClick={()=>signOut(auth)} style={{ background:"linear-gradient(135deg,#ef4444,#dc2626)",border:"none",borderRadius:10,padding:"11px 28px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700 }}>Sign Out</button>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ─── ADMIN USER MANAGEMENT PANEL ─────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+function UserManagementPage({ t, addToast, allEvents }) {
+  const [users,  setUsers]  = useState([]);
+  const [loading,setLoading]= useState(true);
+  const [tab,    setTab]    = useState("pending"); // pending | approved | all
+  const [assignModal, setAssignModal] = useState(null); // user being assigned events
+
+  useEffect(()=>{
+    const unsub = onSnapshot(collection(db,"users"), snap=>{
+      setUsers(snap.docs.map(d=>({id:d.id,...d.data()})));
+      setLoading(false);
+    });
+    return unsub;
+  },[]);
+
+  const approveUser = async (user) => {
+    await updateDoc(doc(db,"users",user.id),{ status:"approved" });
+    addToast(`✅ ${user.name} approved`);
+  };
+  const rejectUser = async (user) => {
+    await updateDoc(doc(db,"users",user.id),{ status:"rejected" });
+    addToast(`${user.name} rejected`,"error");
+  };
+  const makeAdmin = async (user) => {
+    await updateDoc(doc(db,"users",user.id),{ role:"admin" });
+    addToast(`${user.name} is now an Admin`);
+  };
+  const removeAdmin = async (user) => {
+    await updateDoc(doc(db,"users",user.id),{ role:"user" });
+    addToast(`${user.name} role changed to User`);
+  };
+  const deleteUser = async (user) => {
+    await deleteDoc(doc(db,"users",user.id));
+    addToast(`${user.name} removed`,"error");
+  };
+
+  const shown = tab==="pending" ? users.filter(u=>u.status==="pending")
+              : tab==="approved"? users.filter(u=>u.status==="approved")
+              : users;
+
+  const statusColor = { pending:"#f59e0b", approved:"#10b981", rejected:"#ef4444" };
+
+  return (
+    <div style={{ animation:"fadeUp 0.4s ease" }}>
+      {/* Tabs */}
+      <div style={{ display:"flex",gap:8,marginBottom:20,flexWrap:"wrap" }}>
+        {[["pending","⏳ Pending",users.filter(u=>u.status==="pending").length],
+          ["approved","✅ Approved",users.filter(u=>u.status==="approved").length],
+          ["all","👥 All Users",users.length]
+        ].map(([k,l,cnt])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,
+            background:tab===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",
+            color:tab===k?"#fff":t.textMuted,border:`1px solid ${tab===k?"transparent":t.border}` }}>
+            {l} <span style={{ background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"1px 7px",fontSize:11,marginLeft:4 }}>{cnt}</span>
+          </button>
+        ))}
+      </div>
+
+      {loading && <div style={{ color:t.textMuted,padding:40,textAlign:"center" }}>Loading users...</div>}
+
+      {!loading && shown.length===0 && (
+        <div style={{ textAlign:"center",padding:"60px 20px",background:t.surface,borderRadius:16,border:`2px dashed ${t.border}` }}>
+          <div style={{ fontSize:40,marginBottom:12 }}>👤</div>
+          <div style={{ color:t.textMuted,fontSize:14 }}>{tab==="pending"?"No pending approvals":"No users found"}</div>
+        </div>
+      )}
+
+      <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+        {shown.map(user=>(
+          <div key={user.id} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,padding:20,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap" }}>
+            {/* Avatar */}
+            <div style={{ width:44,height:44,borderRadius:"50%",background:`${user.role==="admin"?"#f59e0b":"#0F9DAD"}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0 }}>
+              {user.name?.[0]?.toUpperCase()||"?"}
+            </div>
+            {/* Info */}
+            <div style={{ flex:1,minWidth:180 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:3 }}>
+                <span style={{ fontSize:15,fontWeight:700,color:t.text }}>{user.name}</span>
+                {user.role==="admin" && <span style={{ background:"#f59e0b18",color:"#f59e0b",borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700 }}>👑 ADMIN</span>}
+              </div>
+              <div style={{ fontSize:12,color:t.textMuted }}>{user.email}</div>
+              <div style={{ fontSize:11,color:t.textDim,marginTop:3 }}>
+                Joined {user.createdAt?new Date(user.createdAt).toLocaleDateString("en-IN"):"—"}
+                {user.assignedEvents?.length>0 && ` · ${user.assignedEvents.length} event(s) assigned`}
+              </div>
+            </div>
+            {/* Status badge */}
+            <span style={{ background:`${statusColor[user.status]||"#6b7280"}18`,color:statusColor[user.status]||"#6b7280",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:700 }}>
+              {user.status==="pending"?"⏳ Pending":user.status==="approved"?"✅ Approved":"❌ Rejected"}
+            </span>
+            {/* Actions */}
+            <div style={{ display:"flex",gap:7,flexWrap:"wrap" }}>
+              {user.status==="pending" && <>
+                <button onClick={()=>approveUser(user)} style={{ background:"#10b98118",border:"1px solid #10b98133",borderRadius:8,padding:"7px 14px",color:"#10b981",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>✓ Approve</button>
+                <button onClick={()=>rejectUser(user)} style={{ background:"#ef444418",border:"1px solid #ef444433",borderRadius:8,padding:"7px 14px",color:"#ef4444",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>✗ Reject</button>
+              </>}
+              {user.status==="approved" && <>
+                <button onClick={()=>setAssignModal(user)} style={{ background:"#6366f118",border:"1px solid #6366f133",borderRadius:8,padding:"7px 14px",color:"#6366f1",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>📋 Assign Events</button>
+                {user.role!=="admin"
+                  ? <button onClick={()=>makeAdmin(user)} style={{ background:"#f59e0b18",border:"1px solid #f59e0b33",borderRadius:8,padding:"7px 14px",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>👑 Make Admin</button>
+                  : <button onClick={()=>removeAdmin(user)} style={{ background:t.surface2,border:`1px solid ${t.border}`,borderRadius:8,padding:"7px 14px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12 }}>Remove Admin</button>
+                }
+              </>}
+              <button onClick={()=>deleteUser(user)} style={{ background:"#ef444412",border:"none",borderRadius:8,padding:"7px 9px",color:"#ef4444",cursor:"pointer" }}><Icon name="delete" size={13}/></button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Assign Events Modal */}
+      {assignModal && (
+        <AssignEventsModal user={assignModal} allEvents={allEvents} onClose={()=>setAssignModal(null)} addToast={addToast} t={t}/>
+      )}
+    </div>
+  );
+}
+
+// ─── Assign Events Modal ──────────────────────────────────────────────
+function AssignEventsModal({ user, allEvents, onClose, addToast, t }) {
+  const [selected, setSelected] = useState(new Set(user.assignedEvents||[]));
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateDoc(doc(db,"users",user.id),{ assignedEvents:[...selected] });
+      addToast(`Events assigned to ${user.name} ✓`);
+      onClose();
+    } catch(e) { addToast("Error: "+e.message,"error"); }
+    setSaving(false);
+  };
+
+  return (
+    <Modal open={true} onClose={onClose} title={`Assign Events — ${user.name}`} th={t}>
+      <div style={{ fontSize:13,color:t.textMuted,marginBottom:16 }}>Select which events this user can access:</div>
+      {allEvents.length===0 && <div style={{ color:t.textDim,fontSize:13,marginBottom:16 }}>No events created yet.</div>}
+      <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:20,maxHeight:340,overflowY:"auto" }}>
+        {allEvents.map(ev=>{
+          const color = eventColor(ev.eventType);
+          const checked = selected.has(ev.id);
+          return (
+            <div key={ev.id} onClick={()=>toggle(ev.id)}
+              style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:11,border:`1.5px solid ${checked?color:t.border}`,background:checked?`${color}0d`:t.surface2,cursor:"pointer",transition:"all 0.15s" }}>
+              <div style={{ width:20,height:20,borderRadius:5,border:`2px solid ${checked?color:t.border}`,background:checked?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                {checked && <Icon name="check" size={12}/>}
+              </div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:14,fontWeight:600,color:t.text }}>{ev.name}</div>
+                <div style={{ fontSize:11,color:t.textMuted }}>{eventLabel(ev.eventType)}{ev.eventDate?` · ${new Date(ev.eventDate).toLocaleDateString("en-IN")}`:""}</div>
+              </div>
+              <span style={{ background:`${color}18`,color,borderRadius:20,padding:"2px 9px",fontSize:11,fontWeight:700 }}>{formatCurrency(ev.totalAmount||0)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display:"flex",gap:10 }}>
+        <button onClick={onClose} style={{ flex:1,padding:"11px 0",borderRadius:11,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit" }}>Cancel</button>
+        <button onClick={handleSave} disabled={saving} style={{ flex:2,padding:"11px 0",borderRadius:11,border:"none",background:saving?t.border:"linear-gradient(135deg,#0F9DAD,#0a7a87)",color:saving?t.textMuted:"#fff",fontWeight:700,fontSize:14,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit" }}>
+          {saving?"Saving...":"Save Assignments ✓"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ─── ROOT APP ─────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+function MoiBee() {
+  const [authUser,    setAuthUser]    = useState(undefined); // undefined=loading, null=signed out
+  const [userProfile, setUserProfile] = useState(null);
+  const [activeEvent, setActiveEvent] = useState(null);
+  const [theme,       setTheme]       = useState(()=>load("moibee_theme","dark"));
+  const [allEvents,   setAllEvents]   = useState([]);
+  const [appPage,     setAppPage]     = useState("events"); // events | users
+  const t = THEMES[theme];
+  const toggleTheme = () => { const n=theme==="dark"?"light":"dark"; setTheme(n); save("moibee_theme",n); };
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((msg,type="success")=>{
+    const id=Date.now().toString();
+    setToasts(t=>[...t,{id,msg,type}]);
+    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),3500);
+  },[]);
+
+  // ── Listen to Firebase Auth state
+  useEffect(()=>{
+    const unsub = onAuthStateChanged(auth, async (user)=>{
+      if(user){
+        setAuthUser(user);
+        // Load user profile from Firestore
+        const snap = await getDoc(doc(db,"users",user.uid));
+        if(snap.exists()){
+          setUserProfile({id:snap.id,...snap.data()});
+        } else {
+          // Could be the very first admin — auto-create admin profile
+          const profile = { name:"Admin", email:user.email, role:"admin", status:"approved", assignedEvents:[], createdAt:new Date().toISOString() };
+          await setDoc(doc(db,"users",user.uid), profile);
+          setUserProfile({id:user.uid,...profile});
+        }
+      } else {
+        setAuthUser(null);
+        setUserProfile(null);
+      }
+    });
+    return unsub;
+  },[]);
+
+  // ── Load all events (needed for admin assignment + filtering for users)
+  useEffect(()=>{
+    const q = query(collection(db,"events"),orderBy("createdAt","desc"));
+    const unsub = onSnapshot(q, snap=>setAllEvents(snap.docs.map(d=>({id:d.id,...d.data()}))));
+    return unsub;
+  },[]);
+
+  // ── Loading state
+  if(authUser===undefined) return (
+    <div style={{ minHeight:"100vh",background:THEMES[theme].bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora',sans-serif" }}>
+      <div style={{ textAlign:"center" }}>
+        <MoiBeeLogo size={52}/>
+        <div style={{ marginTop:16,width:36,height:36,border:"3px solid #0F9DAD33",borderTop:"3px solid #0F9DAD",borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"16px auto 0" }}/>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
+
+  // ── Not logged in
+  if(!authUser) return <LoginPage theme={theme} toggleTheme={toggleTheme}/>;
+
+  // ── Pending approval
+  if(userProfile?.status==="pending") return <PendingPage theme={theme} toggleTheme={toggleTheme} userProfile={userProfile}/>;
+
+  // ── Rejected
+  if(userProfile?.status==="rejected") return <RejectedPage theme={theme} toggleTheme={toggleTheme}/>;
+
+  const isAdmin = userProfile?.role==="admin";
+
+  // ── Filter events for regular users
+  const visibleEvents = isAdmin ? allEvents : allEvents.filter(ev=>(userProfile?.assignedEvents||[]).includes(ev.id));
+
+  // ── Inside an event
+  if(activeEvent) return (
+    <EventApp event={activeEvent} theme={theme} toggleTheme={toggleTheme} onBack={()=>setActiveEvent(null)} t={t} isAdmin={isAdmin}/>
+  );
+
+  // ── Main hub
+  return (
+    <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'Sora','Segoe UI',sans-serif",color:t.text }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap'); @keyframes fadeUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}} @keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-thumb{background:${t.scrollbar};border-radius:3px}`}</style>
+
+      {/* Top nav */}
+      <div style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"13px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
+        <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+          <MoiBeeLogo size={32}/>
+          <div>
+            <div style={{ fontSize:17,fontWeight:800 }}><span style={{ color:"#0F9DAD" }}>moi</span><span style={{ color:t.text }}>BEE</span></div>
+            <div style={{ fontSize:9,color:"#0F9DAD",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase" }}>Track Every Blessing</div>
+          </div>
+          {/* Admin nav tabs */}
+          {isAdmin && (
+            <div style={{ display:"flex",gap:4,marginLeft:20 }}>
+              {[["events","🎉 Events"],["users","👥 Users"]].map(([k,l])=>(
+                <button key={k} onClick={()=>setAppPage(k)} style={{ padding:"6px 14px",borderRadius:9,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,background:appPage===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",color:appPage===k?"#fff":t.textMuted }}>
+                  {l}
+                  {false && <span style={{ background:"#ef4444",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:10,display:"inline-flex",alignItems:"center",justifyContent:"center",marginLeft:5 }}>!</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ display:"flex",alignItems:"center",gap:10 }}>
+          {/* User info */}
+          <div style={{ background:t.surface2,borderRadius:10,padding:"6px 12px",fontSize:12,color:t.textMuted,display:"flex",alignItems:"center",gap:7 }}>
+            <div style={{ width:24,height:24,borderRadius:"50%",background:isAdmin?"#f59e0b22":"#0F9DAD22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:isAdmin?"#f59e0b":"#0F9DAD" }}>
+              {userProfile?.name?.[0]?.toUpperCase()||"?"}
+            </div>
+            <span style={{ fontWeight:600,color:t.text }}>{userProfile?.name}</span>
+            {isAdmin && <span style={{ background:"#f59e0b18",color:"#f59e0b",borderRadius:20,padding:"1px 6px",fontSize:9,fontWeight:800 }}>ADMIN</span>}
+          </div>
+          <ThemeToggle theme={theme} toggleTheme={toggleTheme}/>
+          <button onClick={()=>signOut(auth)} style={{ display:"flex",alignItems:"center",gap:7,background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"7px 13px",color:t.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>
+            <Icon name="logout" size={14}/> Sign Out
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth:1100,margin:"0 auto",padding:"28px 24px" }}>
+        {appPage==="events" && (
+          <EventsHub
+            theme={theme} toggleTheme={toggleTheme}
+            onSelectEvent={setActiveEvent}
+            onLogout={()=>signOut(auth)}
+            t={t}
+            isAdmin={isAdmin}
+            visibleEvents={visibleEvents}
+            allEvents={allEvents}
+            addToast={addToast}
+          />
+        )}
+        {appPage==="users" && isAdmin && (
+          <UserManagementPage t={t} addToast={addToast} allEvents={allEvents}/>
+        )}
+      </div>
+      <Toast toasts={toasts}/>
+    </div>
   );
 }
 
