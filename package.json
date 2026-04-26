@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "MoiBee — Track Every Blessing | Wedding Gift Tracker by AllBee Solutions",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,7 +11,8 @@
   },
   "dependencies": {
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "firebase": "10.11.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
