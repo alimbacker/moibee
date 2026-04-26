@@ -1138,11 +1138,11 @@ function LoginPage({ theme, toggleTheme }) {
     </button>
   );
 
-  const FInput = ({ label,value,onChange,type="text",placeholder="" }) => (
+  // renderInput — NOT a component (avoids remount on every keystroke)
+  const renderInput = (label, value, onChange, type="text", placeholder="") => (
     <div style={{ marginBottom:14 }}>
       <label style={{ display:"block",fontSize:11,fontWeight:600,color:t.textMuted,marginBottom:5,textTransform:"uppercase",letterSpacing:"0.05em" }}>{label}</label>
       <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        onKeyDown={e=>{ if(e.key==="Enter"){ tab==="login"?handleLogin():tab==="register"?handleRegister():handleReset(); }}}
         style={{ width:"100%",background:t.inputBg,border:`1.5px solid ${t.border}`,borderRadius:10,padding:"11px 14px",color:t.text,fontSize:15,outline:"none",boxSizing:"border-box",fontFamily:"inherit" }}
         onFocus={e=>e.target.style.borderColor="#0F9DAD"} onBlur={e=>e.target.style.borderColor=t.border}/>
     </div>
@@ -1181,8 +1181,8 @@ function LoginPage({ theme, toggleTheme }) {
 
         {tab==="login" && (
           <AuthCard title="Welcome back" subtitle="Sign in to your MoiBee account" t={t}>
-            <FInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@email.com"/>
-            <FInput label="Password" value={pass} onChange={setPass} type="password" placeholder="••••••••"/>
+            {renderInput("Email", email, setEmail, "email", "you@email.com")}
+            {renderInput("Password", pass, setPass, "password", "••••••••")}
             {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
             <Btn onClick={handleLogin} label="Sign In →"/>
             <div style={{ textAlign:"center",marginTop:14 }}>
@@ -1193,9 +1193,9 @@ function LoginPage({ theme, toggleTheme }) {
 
         {tab==="register" && (
           <AuthCard title="Create account" subtitle="Register to access MoiBee — admin will approve your account" t={t}>
-            <FInput label="Your Name" value={name} onChange={setName} placeholder="Full name"/>
-            <FInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@email.com"/>
-            <FInput label="Password" value={pass} onChange={setPass} type="password" placeholder="Min 6 characters"/>
+            {renderInput("Your Name", name, setName, "text", "Full name")}
+            {renderInput("Email", email, setEmail, "email", "you@email.com")}
+            {renderInput("Password", pass, setPass, "password", "Min 6 characters")}
             {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
             <Btn onClick={handleRegister} label="Create Account →"/>
             <div style={{ background:"#f59e0b12",border:"1px solid #f59e0b33",borderRadius:8,padding:"9px 13px",color:"#f59e0b",fontSize:12,marginTop:12,textAlign:"center" }}>
@@ -1206,7 +1206,7 @@ function LoginPage({ theme, toggleTheme }) {
 
         {tab==="reset" && (
           <AuthCard title="Reset password" subtitle="Enter your email to receive a reset link" t={t}>
-            <FInput label="Email" value={email} onChange={setEmail} type="email" placeholder="you@email.com"/>
+            {renderInput("Email", email, setEmail, "email", "you@email.com")}
             {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
             <Btn onClick={handleReset} label="Send Reset Email"/>
             <div style={{ textAlign:"center",marginTop:12 }}>
