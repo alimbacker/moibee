@@ -1,11 +1,21 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { useState, useEffect, useCallback, useRef } from "react";
-import { db } from "./firebase.js";
-import {
-  collection, doc, addDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, setDoc
-} from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc } from "firebase/firestore";
+
+// ─── Firebase Init ────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 const formatCurrency = (n) => "₹" + Number(n).toLocaleString("en-IN");
