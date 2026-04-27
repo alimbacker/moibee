@@ -300,7 +300,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
 
         {/* Summary strip */}
         {!loading && events.length>0 && (
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:28 }}>
+          <div className="hub-summary" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:24 }}>
             {[
               { label:"Total Events",    value:events.length,              color:"#6366f1", sub:"all time" },
               { label:"Active Events",   value:activeEvents.length,        color:"#0F9DAD", sub:formatCurrency(totalActive) },
@@ -317,7 +317,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
         )}
 
         {/* Tabs + New button */}
-        <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12 }}>
+        <div className="hub-header" style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12 }}>
           {/* Tab pills */}
           <div style={{ display:"flex",background:t.surface,border:`1px solid ${t.border}`,borderRadius:12,padding:4,gap:4 }}>
             {[
@@ -334,7 +334,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
             ))}
           </div>
 
-          {isAdmin && <button onClick={()=>setShowCreate(true)} style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"11px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}><Icon name="add" size={16}/> New Event</button>}
+          <button onClick={()=>setShowCreate(true)} style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"11px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}><Icon name="add" size={16}/> New Event</button>
         </div>
 
         {/* Loading */}
@@ -377,7 +377,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
                 </div>
               </div>
             )}
-            <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:18,animation:"fadeUp 0.35s ease" }}>
+            <div className="hub-grid" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16,animation:"fadeUp 0.35s ease" }}>
               {shownEvents.map(ev=><EventCard key={ev.id} ev={ev}/>)}
             </div>
           </>
@@ -385,7 +385,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
       </div>
 
       {/* Create / Edit Modal */}
-      {isAdmin && <EventFormModal open={showCreate||!!showEdit} editEvent={showEdit} onClose={()=>{setShowCreate(false);setShowEdit(null);}} addToast={addToast} t={t}/>}
+      <EventFormModal open={showCreate||!!showEdit} editEvent={showEdit} onClose={()=>{setShowCreate(false);setShowEdit(null);}} addToast={addToast} t={t}/>
 
       {/* Mark Complete Confirm */}
       <Modal open={!!completeConfirm} onClose={()=>setCompleteConfirm(null)} title="Mark as Completed?" th={t}>
@@ -550,11 +550,13 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
         ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:${t.bg}} ::-webkit-scrollbar-thumb{background:${t.scrollbar};border-radius:3px}
         input::placeholder,textarea::placeholder{color:${t.textDim}!important}
         select option{background:${t.surface};color:${t.text}}
-        @media print{.no-print{display:none!important}body{background:white!important;color:black!important}}
+        @media print{.sidebar-panel,.mob-btn{display:none!important}body{background:white!important;color:black!important}}
+        @media(min-width:769px){.sidebar-panel{left:0!important}.main-content{margin-left:240px!important}}
+        @media(max-width:768px){.main-content{margin-left:0!important}.mob-btn{display:block!important}}
       `}</style>
 
       {/* Sidebar */}
-      <div className="no-print" style={{ width:240,background:t.sidebarBg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",padding:"20px 0",position:"fixed",top:0,left:sidebarOpen?0:-240,height:"100vh",zIndex:200,transition:"left 0.3s ease" }}>
+      <div className="sidebar-panel" style={{ width:240,background:t.sidebarBg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",padding:"20px 0",position:"fixed",top:0,left:sidebarOpen?0:-240,height:"100vh",zIndex:200,transition:"left 0.3s ease" }}>
         <div style={{ padding:"0 16px 16px",borderBottom:`1px solid ${t.border}`,marginBottom:12 }}>
           <button onClick={onBack} style={{ display:"flex",alignItems:"center",gap:8,background:t.surface2,border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 12px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,marginBottom:14,width:"100%" }}>
             <Icon name="back" size={13}/> All Events
@@ -588,12 +590,11 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
       {sidebarOpen && <div onClick={()=>setSidebarOpen(false)} style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",zIndex:199 }}/>}
 
       {/* Main */}
-      <div style={{ flex:1,marginLeft:240,minHeight:"100vh",display:"flex",flexDirection:"column" }} className="main-content">
-        <style>{`@media(max-width:768px){.main-content{margin-left:0!important}}`}</style>
+      <div className="main-content" style={{ flex:1,minHeight:"100vh",display:"flex",flexDirection:"column" }}>
         <div className="no-print" style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"13px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
           <div style={{ display:"flex",alignItems:"center",gap:14 }}>
             <button className="mob-btn" onClick={()=>setSidebarOpen(!sidebarOpen)} style={{ background:"none",border:"none",color:t.textMid,cursor:"pointer",padding:4,display:"none" }}><Icon name="menu" size={22}/></button>
-            <style>{`@media(max-width:768px){.mob-btn{display:block!important}.no-print{left:0!important}}@media(min-width:769px){.no-print{left:0!important}}`}</style>
+            <style>{`@media(max-width:768px){.mob-btn{display:block!important}}@media(min-width:769px){.sidebar-panel{left:0!important}}`}</style>
             <div>
               <div style={{ fontSize:16,fontWeight:700,color:t.text }}>{navItems.find(n=>n.id===page)?.label}</div>
               <div style={{ fontSize:11,color:t.textMuted }}>{event.name} · {entries.length} entries</div>
@@ -606,7 +607,7 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
           </div>
         </div>
 
-        <div style={{ flex:1,padding:"24px 22px",maxWidth:1200,width:"100%" }}>
+        <div style={{ flex:1,padding:"18px 14px",maxWidth:1200,width:"100%" }} className="event-content">
           {page==="dashboard" && <DashboardPage entries={entries} event={event} t={t} loading={loading}/>}
           {page==="add"       && <AddEntryPage addEntry={addEntry} updateEntry={updateEntry} addToast={addToast} editEntry={editEntry} setEditEntry={setEditEntry} setPage={setPage} event={event} t={t}/>}
           {page==="records"   && <RecordsPage entries={entries} addToast={addToast} setEditEntry={setEditEntry} setPage={setPage} setReceiptEntry={setReceiptEntry} setDeleteConfirm={setDeleteConfirm} event={event} t={t}/>}
@@ -734,7 +735,7 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
       <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:18,padding:28 }}>
         <div style={{ fontSize:12,color:"#0F9DAD",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4 }}>{editEntry?"✏️ Edit":"🎁 New"} Entry</div>
         <div style={{ fontSize:20,fontWeight:800,color:t.text,fontFamily:"'DM Serif Display',Georgia,serif",marginBottom:22 }}>{editEntry?"Update Gift Entry":"Record a Gift"}</div>
-        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 14px" }}>
+        <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 14px" }}>
           <div style={{ gridColumn:"1/-1" }}><Input label="Guest Name" value={form.name} onChange={v=>set("name",v)} placeholder="Full name" required th={t}/></div>
           <Input label="Mobile" value={form.mobile} onChange={v=>set("mobile",v)} placeholder="9876543210" type="tel" th={t}/>
           <Input label="Place" value={form.place} onChange={v=>set("place",v)} placeholder="Chennai" th={t}/>
@@ -742,7 +743,7 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
         {/* Gift type grid */}
         <div style={{ marginBottom:18 }}>
           <label style={{ display:"block",fontSize:12,fontWeight:600,color:t.textMuted,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.05em" }}>Gift Type <span style={{ color:"#0F9DAD" }}>*</span></label>
-          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7 }}>
+          <div style={{ display:"grid",gridTemplateColumns:"repeat(3,minmax(80px,1fr))",gap:7 }}>
             {GIFT_TYPES.map(g=>{
               const active=form.giftType===g.value;
               return <button key={g.value} onClick={()=>set("giftType",g.value)} style={{ padding:"11px 6px",borderRadius:11,border:`2px solid ${active?g.color:t.border}`,background:active?`${g.color}18`:t.inputBg,color:active?g.color:t.textMuted,cursor:"pointer",fontSize:12,fontWeight:active?700:500,fontFamily:"inherit",transition:"all 0.15s",textAlign:"center" }}>
@@ -829,7 +830,7 @@ function RecordsPage({ entries, addToast, setEditEntry, setPage, setReceiptEntry
         <div style={{ fontSize:14,fontWeight:700,color:"#0F9DAD" }}>Cash Total: {formatCurrency(moneyTotal)}</div>
       </div>
       <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,overflow:"hidden" }}>
-        <div style={{ overflowX:"auto" }}>
+        <div style={{ overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
           <table style={{ width:"100%",borderCollapse:"collapse" }}>
             <thead><tr style={{ background:t.surface2 }}>
               {["#","Name","Place","Mobile","Type","Amount / Gift","Date",""].map(h=><th key={h} style={{ padding:"11px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap" }}>{h}</th>)}
@@ -868,60 +869,191 @@ function RecordsPage({ entries, addToast, setEditEntry, setPage, setReceiptEntry
   );
 }
 
-// ─── RECEIPT MODAL ────────────────────────────────────────────────────
+// ─── RECEIPT MODAL (Thermal Printer Optimized) ───────────────────────
 function ReceiptModal({ entry, event, onClose, t }) {
-  const gt=entry.giftType||entry.mode; const money=isMoneyType(gt);
-  const handlePrint=()=>{
-    const w=window.open("","_blank","width=400,height=640");
-    const giftBlock=money
-      ?`<div class="amt"><div class="albl">Gift Amount</div><div class="aval">${formatCurrency(entry.amount)}</div></div>`
-      :`<div class="amt"><div class="albl">Gift</div><div class="gval">${entry.giftDesc||gt}${entry.giftWeight?` · ${entry.giftWeight} ${entry.giftUnit||"g"}`:""}</div>${entry.amount>0?`<div style="font-size:12px;color:#999;margin-top:4px">Est. ${formatCurrency(entry.amount)}</div>`:""}</div>`;
-    w.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
-    <style>body{font-family:'Segoe UI',sans-serif;margin:0;padding:20px;background:#fff;color:#1a1a1a;max-width:380px}
-    .logo{font-size:22px;font-weight:900;color:#0F9DAD}.tag{font-size:10px;color:#999;letter-spacing:.2em;text-transform:uppercase}
-    .hdr{text-align:center;padding-bottom:14px;border-bottom:1px dashed #ccc;margin-bottom:14px}
-    .row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
-    .lbl{color:#666}.val{font-weight:600}
-    .amt{background:#f0fafa;border-radius:8px;padding:14px;text-align:center;margin:16px 0}
-    .albl{font-size:11px;color:#666;margin-bottom:4px}.aval{font-size:30px;font-weight:900;color:#0F9DAD}
-    .gval{font-size:20px;font-weight:800;color:#f59e0b}
-    .note{text-align:center;font-size:12px;color:#555;font-style:italic}
-    .footer{text-align:center;margin-top:20px;font-size:10px;color:#999;border-top:1px dashed #ccc;padding-top:14px}
-    </style></head><body>
-    <div class="hdr"><div class="logo">moiBEE</div><div class="tag">TRACK EVERY BLESSING</div>
-    <div style="font-size:16px;font-weight:700;margin-top:8px">${event.name}</div>
-    <div style="font-size:12px;color:#555">${event.familyName||""}</div>
-    <div style="font-size:10px;color:#999;margin-top:5px">Receipt #${entry.id?.slice(-6).toUpperCase()}</div></div>
-    ${[["Guest Name",entry.name],["Mobile",entry.mobile||"—"],["Place",entry.place||"—"],["Gift Type",giftLabel(gt)],["Date",formatDate(entry.createdAt)],...(entry.notes?[["Notes",entry.notes]]:[])].map(([l,v])=>`<div class="row"><span class="lbl">${l}</span><span class="val">${v}</span></div>`).join("")}
-    ${giftBlock}
-    <div class="note">${event.headerNote||"With Blessings & Best Wishes"}</div>
-    <div class="footer">🐝 Powered by AllBee Solutions · MoiBee</div></body></html>`);
-    w.document.close(); w.focus(); setTimeout(()=>{w.print();w.close();},300);
+  const gt    = entry.giftType||entry.mode;
+  const money = isMoneyType(gt);
+  const [paperSize, setPaperSize] = useState("80mm"); // "58mm" | "80mm"
+
+  const handlePrint = () => {
+    const width   = paperSize === "58mm" ? "54mm" : "76mm";
+    const fontSize = paperSize === "58mm" ? "11px" : "13px";
+    const bigFont  = paperSize === "58mm" ? "22px" : "28px";
+    const midFont  = paperSize === "58mm" ? "13px" : "16px";
+
+    const rows = [
+      ["Name",    entry.name],
+      ["Mobile",  entry.mobile||""],
+      ["Place",   entry.place||""],
+      ["Type",    giftLabel(gt)],
+      ["Date",    formatDate(entry.createdAt)],
+      ...(entry.notes?[["Notes",entry.notes]]:[]),
+    ].filter(([,v])=>v&&v!=="—");
+
+    const amtBlock = money
+      ? `<div class="amt-box">
+           <div class="amt-lbl">GIFT AMOUNT</div>
+           <div class="amt-val">${formatCurrency(entry.amount)}</div>
+         </div>`
+      : `<div class="amt-box">
+           <div class="amt-lbl">GIFT</div>
+           <div class="gift-name">${entry.giftDesc||giftLabel(gt)}</div>
+           ${entry.giftWeight?`<div class="gift-sub">${entry.giftWeight} ${entry.giftUnit||"g"}</div>`:""}
+           ${entry.amount>0?`<div class="gift-sub">Est. ${formatCurrency(entry.amount)}</div>`:""}
+         </div>`;
+
+    const html = `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8"/>
+<title>Receipt</title>
+<style>
+  @page { margin: 0; size: ${paperSize} auto; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: ${fontSize};
+    color: #000;
+    background: #fff;
+    width: ${width};
+    padding: 4mm 3mm;
+  }
+  .center { text-align: center; }
+  .logo { font-size: ${midFont}; font-weight: 900; letter-spacing: 2px; }
+  .tagline { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
+  .event-name { font-size: ${midFont}; font-weight: 700; margin: 4px 0 1px; }
+  .family { font-size: 10px; }
+  .receipt-no { font-size: 9px; margin-top: 3px; }
+  .divider { border: none; border-top: 1px dashed #000; margin: 5px 0; }
+  .divider-solid { border: none; border-top: 1px solid #000; margin: 5px 0; }
+  .row { display: flex; justify-content: space-between; padding: 2px 0; font-size: ${fontSize}; }
+  .lbl { color: #555; flex-shrink: 0; margin-right: 6px; }
+  .val { font-weight: 700; text-align: right; word-break: break-word; }
+  .amt-box { text-align: center; margin: 6px 0; padding: 5px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+  .amt-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+  .amt-val { font-size: ${bigFont}; font-weight: 900; letter-spacing: 1px; }
+  .gift-name { font-size: ${midFont}; font-weight: 900; }
+  .gift-sub { font-size: 10px; color: #333; margin-top: 2px; }
+  .note { text-align: center; font-size: 10px; margin: 5px 0; }
+  .footer { text-align: center; font-size: 9px; margin-top: 6px; letter-spacing: 1px; }
+  .stars { letter-spacing: 4px; font-size: 10px; }
+</style>
+</head><body>
+  <div class="center">
+    <div class="logo">★ moiBEE ★</div>
+    <div class="tagline">Track Every Blessing</div>
+    <hr class="divider"/>
+    <div class="event-name">${event.name}</div>
+    ${event.familyName?`<div class="family">${event.familyName}</div>`:""}
+    <div class="receipt-no">Receipt #${entry.id?.slice(-6).toUpperCase()||"------"}</div>
+  </div>
+  <hr class="divider-solid"/>
+  ${rows.map(([l,v])=>`
+    <div class="row">
+      <span class="lbl">${l}:</span>
+      <span class="val">${v}</span>
+    </div>`).join("")}
+  <hr class="divider"/>
+  ${amtBlock}
+  <hr class="divider"/>
+  ${event.headerNote?`<div class="note">${event.headerNote}</div>`:""}
+  <div class="footer">
+    <div class="stars">* * * * * * * * * *</div>
+    <div style="margin-top:3px">Powered by MoiBee</div>
+    <div>AllBee Solutions</div>
+    <div class="stars">* * * * * * * * * *</div>
+  </div>
+</body></html>`;
+
+    const w = window.open("","_blank","width=300,height=600");
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>{ w.print(); }, 500);
   };
+
+  // Preview styles mimic thermal paper
+  const previewWidth = paperSize==="58mm" ? 220 : 280;
+
   return (
-    <Modal open={true} onClose={onClose} title="Receipt" th={t}>
-      <div style={{ border:`2px solid ${giftColor(gt)}33`,borderRadius:12,padding:22,background:t.surface2 }}>
-        <div style={{ textAlign:"center",marginBottom:16,borderBottom:`1px dashed ${t.border}`,paddingBottom:16 }}>
-          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:8 }}><MoiBeeLogo size={32}/><div><div style={{ fontSize:18,fontWeight:800 }}><span style={{ color:"#0F9DAD" }}>moi</span><span style={{ color:t.text }}>BEE</span></div></div></div>
-          <div style={{ fontSize:16,fontWeight:700,color:t.text }}>{event.name}</div>
-          <div style={{ fontSize:12,color:t.textMuted }}>{event.familyName||""}</div>
-          <div style={{ fontSize:10,color:t.textDim,marginTop:6 }}>Receipt #{entry.id?.slice(-6).toUpperCase()}</div>
-        </div>
-        {[["Guest",entry.name],["Mobile",entry.mobile||"—"],["Place",entry.place||"—"],["Type",giftLabel(gt)],["Date",formatDate(entry.createdAt)],...(entry.notes?[["Notes",entry.notes]]:[])].map(([l,v])=>(
-          <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${t.border}`,fontSize:13 }}>
-            <span style={{ color:t.textMuted }}>{l}</span><span style={{ fontWeight:600,color:t.text }}>{v}</span>
-          </div>
+    <Modal open={true} onClose={onClose} title="Print Receipt" wide={true} th={t}>
+      {/* Paper size selector */}
+      <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:18,padding:"12px 16px",background:t.surface2,borderRadius:12 }}>
+        <span style={{ fontSize:13,color:t.textMuted,fontWeight:600 }}>Thermal Paper Size:</span>
+        {["58mm","80mm"].map(s=>(
+          <button key={s} onClick={()=>setPaperSize(s)}
+            style={{ padding:"7px 18px",borderRadius:20,border:`2px solid ${paperSize===s?"#0F9DAD":t.border}`,background:paperSize===s?"#0F9DAD18":t.inputBg,color:paperSize===s?"#0F9DAD":t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,transition:"all 0.15s" }}>
+            {s}
+          </button>
         ))}
-        <div style={{ background:`${giftColor(gt)}12`,border:`1px solid ${giftColor(gt)}33`,borderRadius:10,padding:18,textAlign:"center",margin:"16px 0" }}>
-          <div style={{ fontSize:11,color:t.textMuted,textTransform:"uppercase",marginBottom:4 }}>{money?"Gift Amount":"Gift"}</div>
-          {money?<div style={{ fontSize:32,fontWeight:900,color:"#0F9DAD" }}>{formatCurrency(entry.amount)}</div>
-          :<><div style={{ fontSize:20,fontWeight:800,color:giftColor(gt) }}>{entry.giftDesc||giftLabel(gt)}</div>{entry.giftWeight&&<div style={{ fontSize:13,color:t.textMid,marginTop:3 }}>{entry.giftWeight} {entry.giftUnit||"g"}</div>}{entry.amount>0&&<div style={{ fontSize:12,color:t.textDim,marginTop:3 }}>Est. {formatCurrency(entry.amount)}</div>}</>}
-        </div>
-        <div style={{ textAlign:"center",fontSize:12,color:t.textMid,fontStyle:"italic" }}>{event.headerNote||"With Blessings & Best Wishes"}</div>
+        <span style={{ fontSize:11,color:t.textDim,marginLeft:6 }}>
+          {paperSize==="58mm"?"Small / Mini printer":"Standard thermal printer"}
+        </span>
       </div>
-      <div style={{ display:"flex",gap:10,marginTop:18,justifyContent:"flex-end" }}>
-        <button onClick={onClose} style={{ padding:"10px 18px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit" }}>Close</button>
-        <button onClick={handlePrint} style={{ padding:"10px 22px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,display:"flex",alignItems:"center",gap:7 }}><Icon name="print" size={15}/> Print</button>
+
+      {/* Thermal receipt preview */}
+      <div style={{ display:"flex",justifyContent:"center",marginBottom:18 }}>
+        <div style={{
+          width:previewWidth, background:"#fff", color:"#000",
+          fontFamily:"'Courier New',Courier,monospace",
+          fontSize: paperSize==="58mm"?11:13,
+          padding:"12px 10px",
+          boxShadow:"0 2px 20px rgba(0,0,0,0.15)",
+          borderRadius:4,
+          border:"1px solid #ddd",
+        }}>
+          {/* Header */}
+          <div style={{ textAlign:"center",marginBottom:8 }}>
+            <div style={{ fontWeight:900,letterSpacing:2,fontSize: paperSize==="58mm"?13:16 }}>★ moiBEE ★</div>
+            <div style={{ fontSize:9,letterSpacing:3,textTransform:"uppercase" }}>Track Every Blessing</div>
+            <div style={{ borderTop:"1px dashed #000",margin:"5px 0" }}/>
+            <div style={{ fontWeight:700,fontSize: paperSize==="58mm"?13:15 }}>{event.name}</div>
+            {event.familyName&&<div style={{ fontSize:10 }}>{event.familyName}</div>}
+            <div style={{ fontSize:9,marginTop:2 }}>Receipt #{entry.id?.slice(-6).toUpperCase()||"------"}</div>
+          </div>
+
+          <div style={{ borderTop:"2px solid #000",margin:"5px 0" }}/>
+
+          {/* Rows */}
+          {[["Name",entry.name],["Mobile",entry.mobile||""],["Place",entry.place||""],["Type",giftLabel(gt)],["Date",formatDate(entry.createdAt)],...(entry.notes?[["Notes",entry.notes]]:[])].filter(([,v])=>v&&v!=="—").map(([l,v])=>(
+            <div key={l} style={{ display:"flex",justifyContent:"space-between",padding:"2px 0",fontSize: paperSize==="58mm"?10:12 }}>
+              <span style={{ color:"#555",flexShrink:0,marginRight:6 }}>{l}:</span>
+              <span style={{ fontWeight:700,textAlign:"right",wordBreak:"break-word",maxWidth:"60%" }}>{v}</span>
+            </div>
+          ))}
+
+          <div style={{ borderTop:"1px dashed #000",margin:"5px 0" }}/>
+
+          {/* Amount / Gift */}
+          <div style={{ textAlign:"center",padding:"5px 0",borderTop:"2px solid #000",borderBottom:"2px solid #000",margin:"4px 0" }}>
+            <div style={{ fontSize:9,letterSpacing:2,textTransform:"uppercase",marginBottom:2 }}>{money?"GIFT AMOUNT":"GIFT"}</div>
+            {money
+              ? <div style={{ fontSize: paperSize==="58mm"?22:28,fontWeight:900,letterSpacing:1 }}>{formatCurrency(entry.amount)}</div>
+              : <>
+                  <div style={{ fontSize: paperSize==="58mm"?14:17,fontWeight:900 }}>{entry.giftDesc||giftLabel(gt)}</div>
+                  {entry.giftWeight&&<div style={{ fontSize:10,color:"#333",marginTop:2 }}>{entry.giftWeight} {entry.giftUnit||"g"}</div>}
+                  {entry.amount>0&&<div style={{ fontSize:10,color:"#333" }}>Est. {formatCurrency(entry.amount)}</div>}
+                </>
+            }
+          </div>
+
+          <div style={{ borderTop:"1px dashed #000",margin:"5px 0" }}/>
+          {event.headerNote&&<div style={{ textAlign:"center",fontSize:10,margin:"4px 0",fontStyle:"italic" }}>{event.headerNote}</div>}
+
+          {/* Footer */}
+          <div style={{ textAlign:"center",fontSize:9,marginTop:6 }}>
+            <div style={{ letterSpacing:4 }}>* * * * * *</div>
+            <div style={{ marginTop:2 }}>Powered by MoiBee</div>
+            <div>AllBee Solutions</div>
+            <div style={{ letterSpacing:4,marginTop:2 }}>* * * * * *</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display:"flex",gap:10,justifyContent:"flex-end" }}>
+        <button onClick={onClose} style={{ padding:"11px 20px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit",fontSize:14 }}>Close</button>
+        <button onClick={handlePrint} style={{ padding:"11px 28px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",gap:8,boxShadow:"0 4px 16px rgba(15,157,173,0.35)" }}>
+          <Icon name="print" size={16}/> Print {paperSize}
+        </button>
       </div>
     </Modal>
   );
@@ -1515,10 +1647,23 @@ function MoiBee() {
   // ── Main hub
   return (
     <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'Sora','Segoe UI',sans-serif",color:t.text }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap'); @keyframes fadeUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}} @keyframes spin{to{transform:rotate(360deg)}} *{box-sizing:border-box} ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-thumb{background:${t.scrollbar};border-radius:3px}`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+        @keyframes fadeUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        *{box-sizing:border-box}
+        ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-thumb{background:${t.scrollbar};border-radius:3px}
+        @media(max-width:768px){
+          .root-nav-tabs{display:none!important}
+          .root-topbar{padding:10px 14px!important}
+          .root-content{padding:16px 12px!important}
+          .root-user-name{display:none!important}
+          .root-signout span{display:none!important}
+        }
+      `}</style>
 
       {/* Top nav */}
-      <div style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"13px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
+      <div className="root-topbar" style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"13px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
           <MoiBeeLogo size={32}/>
           <div>
@@ -1527,7 +1672,7 @@ function MoiBee() {
           </div>
           {/* Admin nav tabs */}
           {isAdmin && (
-            <div style={{ display:"flex",gap:4,marginLeft:20 }}>
+            <div className="root-nav-tabs" style={{ display:"flex",gap:4,marginLeft:20 }}>
               {[["events","🎉 Events"],["users","👥 Users"]].map(([k,l])=>(
                 <button key={k} onClick={()=>setAppPage(k)} style={{ padding:"6px 14px",borderRadius:9,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,background:appPage===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",color:appPage===k?"#fff":t.textMuted }}>
                   {l}
@@ -1543,7 +1688,7 @@ function MoiBee() {
             <div style={{ width:24,height:24,borderRadius:"50%",background:isAdmin?"#f59e0b22":"#0F9DAD22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:isAdmin?"#f59e0b":"#0F9DAD" }}>
               {userProfile?.name?.[0]?.toUpperCase()||"?"}
             </div>
-            <span style={{ fontWeight:600,color:t.text }}>{userProfile?.name}</span>
+            <span className="root-user-name" style={{ fontWeight:600,color:t.text }}>{userProfile?.name}</span>
             {isAdmin && <span style={{ background:"#f59e0b18",color:"#f59e0b",borderRadius:20,padding:"1px 6px",fontSize:9,fontWeight:800 }}>ADMIN</span>}
           </div>
           <ThemeToggle theme={theme} toggleTheme={toggleTheme}/>
@@ -1553,7 +1698,7 @@ function MoiBee() {
         </div>
       </div>
 
-      <div style={{ maxWidth:1100,margin:"0 auto",padding:"28px 24px" }}>
+      <div className="root-content" style={{ maxWidth:1100,margin:"0 auto",padding:"28px 24px" }}>
         {appPage==="events" && (
           <EventsHub
             theme={theme} toggleTheme={toggleTheme}
