@@ -706,8 +706,10 @@ function DashboardPage({ entries, event, t, loading }) {
 // ─── ADD ENTRY ────────────────────────────────────────────────────────
 function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry, setPage, event, t }) {
   const blank={name:"",mobile:"",place:"",giftType:"Cash",amount:"",giftDesc:"",giftWeight:"",giftUnit:"g",notes:""};
-  const [form,setForm]=useState(()=>editEntry?{...blank,...editEntry}:blank);
-  const [saving,setSaving]=useState(false);
+  const [form,      setForm]      = useState(()=>editEntry?{...blank,...editEntry}:blank);
+  const [saving,    setSaving]    = useState(false);
+  const [savedEntry,setSavedEntry]= useState(null);  // triggers print modal
+  const [paperSize, setPaperSize] = useState("80mm");
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
   useEffect(()=>{ setForm(editEntry?{...blank,...editEntry}:blank); },[editEntry]);
   const isMoney=isMoneyType(form.giftType);
@@ -720,18 +722,130 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
     setSaving(true);
     try {
       const payload={...form,amount:isMoney?Number(form.amount):0};
-      if(editEntry){await updateEntry(editEntry.id,payload);addToast("Updated ✓");setEditEntry(null);setPage("records");}
-      else{
-        await addEntry(payload);
+      if(editEntry){
+        await updateEntry(editEntry.id,payload);
+        addToast("Updated ✓");
+        setEditEntry(null);
+        setPage("records");
+      } else {
+        const newEntry = await addEntry(payload);
         addToast(isMoney?`₹${Number(form.amount).toLocaleString("en-IN")} saved for ${form.name} 🎉`:`${form.giftDesc} recorded for ${form.name} 🎁`);
+        setSavedEntry(newEntry); // show print prompt
         setForm(blank);
       }
     } catch(err){addToast("Error: "+err.message,"error");}
     setSaving(false);
   };
 
+  // ── Thermal print function (same as ReceiptModal)
+  const handlePrint = (entry) => {
+    const gt    = entry.giftType||entry.mode;
+    const money = isMoneyType(gt);
+    const width    = paperSize==="58mm"?"54mm":"76mm";
+    const fontSize = paperSize==="58mm"?"11px":"13px";
+    const bigFont  = paperSize==="58mm"?"22px":"28px";
+    const midFont  = paperSize==="58mm"?"13px":"16px";
+    const rows = [
+      ["Name",   entry.name],
+      ["Mobile", entry.mobile||""],
+      ["Place",  entry.place||""],
+      ["Type",   giftLabel(gt)],
+      ["Date",   formatDate(entry.createdAt)],
+      ...(entry.notes?[["Notes",entry.notes]]:[]),
+    ].filter(([,v])=>v&&v!=="—");
+    const amtBlock = money
+      ?`<div class="amt-box"><div class="amt-lbl">GIFT AMOUNT</div><div class="amt-val">${formatCurrency(entry.amount)}</div></div>`
+      :`<div class="amt-box"><div class="amt-lbl">GIFT</div><div class="gift-name">${entry.giftDesc||giftLabel(gt)}</div>${entry.giftWeight?`<div class="gift-sub">${entry.giftWeight} ${entry.giftUnit||"g"}</div>`:""}${entry.amount>0?`<div class="gift-sub">Est. ${formatCurrency(entry.amount)}</div>`:""}</div>`;
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>Receipt</title>
+<style>
+  @page{margin:0;size:${paperSize} auto}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Courier New',Courier,monospace;font-size:${fontSize};color:#000;background:#fff;width:${width};padding:4mm 3mm}
+  .center{text-align:center}
+  .logo{font-size:${midFont};font-weight:900;letter-spacing:2px}
+  .tagline{font-size:9px;letter-spacing:3px;text-transform:uppercase;margin-top:2px}
+  .event-name{font-size:${midFont};font-weight:700;margin:4px 0 1px}
+  .divider{border:none;border-top:1px dashed #000;margin:5px 0}
+  .divider-solid{border:none;border-top:1px solid #000;margin:5px 0}
+  .row{display:flex;justify-content:space-between;padding:2px 0;font-size:${fontSize}}
+  .lbl{color:#555;flex-shrink:0;margin-right:6px}
+  .val{font-weight:700;text-align:right;word-break:break-word}
+  .amt-box{text-align:center;margin:6px 0;padding:5px 0;border-top:2px solid #000;border-bottom:2px solid #000}
+  .amt-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px}
+  .amt-val{font-size:${bigFont};font-weight:900;letter-spacing:1px}
+  .gift-name{font-size:${midFont};font-weight:900}
+  .gift-sub{font-size:10px;color:#333;margin-top:2px}
+  .footer{text-align:center;font-size:9px;margin-top:6px;letter-spacing:1px}
+</style></head><body>
+  <div class="center">
+    <div class="logo">★ moiBEE ★</div>
+    <div class="tagline">Track Every Blessing</div>
+    <hr class="divider"/>
+    <div class="event-name">${event.name}</div>
+    ${event.familyName?`<div style="font-size:10px">${event.familyName}</div>`:""}
+    <div style="font-size:9px;margin-top:3px">Receipt #${entry.id?.slice(-6).toUpperCase()||"------"}</div>
+  </div>
+  <hr class="divider-solid"/>
+  ${rows.map(([l,v])=>`<div class="row"><span class="lbl">${l}:</span><span class="val">${v}</span></div>`).join("")}
+  <hr class="divider"/>
+  ${amtBlock}
+  <hr class="divider"/>
+  ${event.headerNote?`<div style="text-align:center;font-size:10px;margin:4px 0;font-style:italic">${event.headerNote}</div>`:""}
+  <div class="footer">
+    <div style="letter-spacing:4px">* * * * * *</div>
+    <div style="margin-top:3px">Powered by MoiBee · AllBee Solutions</div>
+    <div style="letter-spacing:4px;margin-top:2px">* * * * * *</div>
+  </div>
+</body></html>`;
+    const w=window.open("","_blank","width=300,height=600");
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(()=>w.print(),500);
+  };
+
   return (
     <div style={{ animation:"fadeUp 0.4s ease",maxWidth:640 }}>
+
+      {/* ── Print Prompt — shows after save ── */}
+      {savedEntry && (
+        <div style={{ background:"linear-gradient(135deg,#10b98118,#10b98108)",border:"2px solid #10b98144",borderRadius:16,padding:22,marginBottom:18,animation:"fadeUp 0.3s ease" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
+            <div style={{ fontSize:32 }}>✅</div>
+            <div>
+              <div style={{ fontSize:15,fontWeight:700,color:"#10b981" }}>Entry Saved!</div>
+              <div style={{ fontSize:13,color:t.textMuted,marginTop:2 }}>
+                {isMoneyType(savedEntry.giftType||savedEntry.mode)
+                  ? `${savedEntry.name} · ${formatCurrency(savedEntry.amount)}`
+                  : `${savedEntry.name} · ${savedEntry.giftDesc||giftLabel(savedEntry.giftType)}`
+                }
+              </div>
+            </div>
+            <button onClick={()=>setSavedEntry(null)} style={{ marginLeft:"auto",background:"none",border:"none",color:t.textDim,cursor:"pointer",fontSize:18,padding:4 }}>×</button>
+          </div>
+          {/* Paper size selector */}
+          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap" }}>
+            <span style={{ fontSize:12,color:t.textMuted,fontWeight:600 }}>Paper Size:</span>
+            {["58mm","80mm"].map(s=>(
+              <button key={s} onClick={()=>setPaperSize(s)}
+                style={{ padding:"5px 14px",borderRadius:20,border:`2px solid ${paperSize===s?"#0F9DAD":t.border}`,background:paperSize===s?"#0F9DAD18":t.inputBg,color:paperSize===s?"#0F9DAD":t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,transition:"all 0.15s" }}>
+                {s}
+              </button>
+            ))}
+          </div>
+          <div style={{ display:"flex",gap:10 }}>
+            <button onClick={()=>handlePrint(savedEntry)}
+              style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:11,padding:"12px 0",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}>
+              <Icon name="print" size={16}/> Print Receipt ({paperSize})
+            </button>
+            <button onClick={()=>setSavedEntry(null)}
+              style={{ padding:"12px 18px",borderRadius:11,border:`1px solid ${t.border}`,background:"transparent",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:13 }}>
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:18,padding:28 }}>
         <div style={{ fontSize:12,color:"#0F9DAD",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4 }}>{editEntry?"✏️ Edit":"🎁 New"} Entry</div>
         <div style={{ fontSize:20,fontWeight:800,color:t.text,fontFamily:"'DM Serif Display',Georgia,serif",marginBottom:22 }}>{editEntry?"Update Gift Entry":"Record a Gift"}</div>
