@@ -807,41 +807,45 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
   return (
     <div style={{ animation:"fadeUp 0.4s ease",maxWidth:640 }}>
 
-      {/* ── Print Prompt — shows after save ── */}
+      {/* ── Print Prompt — fixed overlay after save ── */}
       {savedEntry && (
-        <div style={{ background:"linear-gradient(135deg,#10b98118,#10b98108)",border:"2px solid #10b98144",borderRadius:16,padding:22,marginBottom:18,animation:"fadeUp 0.3s ease" }}>
-          <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
-            <div style={{ fontSize:32 }}>✅</div>
-            <div>
-              <div style={{ fontSize:15,fontWeight:700,color:"#10b981" }}>Entry Saved!</div>
-              <div style={{ fontSize:13,color:t.textMuted,marginTop:2 }}>
-                {isMoneyType(savedEntry.giftType||savedEntry.mode)
-                  ? `${savedEntry.name} · ${formatCurrency(savedEntry.amount)}`
-                  : `${savedEntry.name} · ${savedEntry.giftDesc||giftLabel(savedEntry.giftType)}`
-                }
+        <div style={{ position:"fixed",bottom:0,left:0,right:0,zIndex:500,padding:"0 0 0 0",animation:"slideUp 0.3s ease" }}>
+          <style>{`@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+          <div style={{ background:t.surface,borderTop:`2px solid #10b981`,borderRadius:"16px 16px 0 0",padding:"20px 20px 28px",boxShadow:"0 -8px 40px rgba(0,0,0,0.2)",maxWidth:600,margin:"0 auto" }}>
+            {/* Header row */}
+            <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:16 }}>
+              <div style={{ width:40,height:40,borderRadius:"50%",background:"#10b98120",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,flexShrink:0 }}>✅</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:15,fontWeight:700,color:"#10b981" }}>Entry Saved!</div>
+                <div style={{ fontSize:13,color:t.textMuted,marginTop:1 }}>
+                  {isMoneyType(savedEntry.giftType||savedEntry.mode)
+                    ? `${savedEntry.name} · ${formatCurrency(savedEntry.amount)}`
+                    : `${savedEntry.name} · ${savedEntry.giftDesc||giftLabel(savedEntry.giftType)}`
+                  }
+                </div>
               </div>
+              <button onClick={()=>setSavedEntry(null)} style={{ background:t.surface2,border:"none",borderRadius:8,width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",color:t.textMuted,cursor:"pointer",fontSize:16,flexShrink:0 }}>×</button>
             </div>
-            <button onClick={()=>setSavedEntry(null)} style={{ marginLeft:"auto",background:"none",border:"none",color:t.textDim,cursor:"pointer",fontSize:18,padding:4 }}>×</button>
-          </div>
-          {/* Paper size selector */}
-          <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap" }}>
-            <span style={{ fontSize:12,color:t.textMuted,fontWeight:600 }}>Paper Size:</span>
-            {["58mm","80mm"].map(s=>(
-              <button key={s} onClick={()=>setPaperSize(s)}
-                style={{ padding:"5px 14px",borderRadius:20,border:`2px solid ${paperSize===s?"#0F9DAD":t.border}`,background:paperSize===s?"#0F9DAD18":t.inputBg,color:paperSize===s?"#0F9DAD":t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,transition:"all 0.15s" }}>
-                {s}
+            {/* Paper size + print */}
+            <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:12,flexWrap:"wrap" }}>
+              <span style={{ fontSize:12,color:t.textMuted,fontWeight:600,marginRight:4 }}>Paper:</span>
+              {["58mm","80mm"].map(s=>(
+                <button key={s} onClick={()=>setPaperSize(s)}
+                  style={{ padding:"5px 14px",borderRadius:20,border:`2px solid ${paperSize===s?"#0F9DAD":t.border}`,background:paperSize===s?"#0F9DAD18":t.inputBg,color:paperSize===s?"#0F9DAD":t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>
+                  {s}
+                </button>
+              ))}
+            </div>
+            <div style={{ display:"flex",gap:10 }}>
+              <button onClick={()=>handlePrint(savedEntry)}
+                style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"13px 0",color:"#fff",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}>
+                <Icon name="print" size={17}/> Print Receipt ({paperSize})
               </button>
-            ))}
-          </div>
-          <div style={{ display:"flex",gap:10 }}>
-            <button onClick={()=>handlePrint(savedEntry)}
-              style={{ flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:11,padding:"12px 0",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}>
-              <Icon name="print" size={16}/> Print Receipt ({paperSize})
-            </button>
-            <button onClick={()=>setSavedEntry(null)}
-              style={{ padding:"12px 18px",borderRadius:11,border:`1px solid ${t.border}`,background:"transparent",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:13 }}>
-              Skip
-            </button>
+              <button onClick={()=>setSavedEntry(null)}
+                style={{ padding:"13px 20px",borderRadius:12,border:`1px solid ${t.border}`,background:"transparent",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:500 }}>
+                Skip
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1760,59 +1764,64 @@ function MoiBee() {
 
   // ── Main hub
   return (
-    <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'Sora','Segoe UI',sans-serif",color:t.text }}>
+    <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'Sora','Segoe UI',sans-serif",color:t.text,display:"flex",flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
         @keyframes fadeUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
         @keyframes spin{to{transform:rotate(360deg)}}
         *{box-sizing:border-box}
         ::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-thumb{background:${t.scrollbar};border-radius:3px}
-        @media(max-width:768px){
-          .root-nav-tabs{display:none!important}
-          .root-topbar{padding:10px 14px!important}
-          .root-content{padding:16px 12px!important}
+        @media(max-width:600px){
           .root-user-name{display:none!important}
-          .root-signout span{display:none!important}
+          .root-topbar{padding:10px 12px!important}
+          .root-content{padding:12px 10px!important}
         }
       `}</style>
 
       {/* Top nav */}
-      <div className="root-topbar" style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"13px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100 }}>
-        <div style={{ display:"flex",alignItems:"center",gap:12 }}>
-          <MoiBeeLogo size={32}/>
-          <div>
-            <div style={{ fontSize:17,fontWeight:800 }}><span style={{ color:"#0F9DAD" }}>moi</span><span style={{ color:t.text }}>BEE</span></div>
-            <div style={{ fontSize:9,color:"#0F9DAD",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase" }}>Track Every Blessing</div>
-          </div>
-          {/* Admin nav tabs */}
-          {isAdmin && (
-            <div className="root-nav-tabs" style={{ display:"flex",gap:4,marginLeft:20 }}>
-              {[["events","🎉 Events"],["users","👥 Users"]].map(([k,l])=>(
-                <button key={k} onClick={()=>setAppPage(k)} style={{ padding:"6px 14px",borderRadius:9,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,background:appPage===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",color:appPage===k?"#fff":t.textMuted }}>
-                  {l}
-                  {false && <span style={{ background:"#ef4444",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:10,display:"inline-flex",alignItems:"center",justifyContent:"center",marginLeft:5 }}>!</span>}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="root-topbar" style={{ background:t.topbarBg,borderBottom:`1px solid ${t.border}`,padding:"12px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:100,flexShrink:0 }}>
+        {/* Left: Logo */}
         <div style={{ display:"flex",alignItems:"center",gap:10 }}>
-          {/* User info */}
-          <div style={{ background:t.surface2,borderRadius:10,padding:"6px 12px",fontSize:12,color:t.textMuted,display:"flex",alignItems:"center",gap:7 }}>
-            <div style={{ width:24,height:24,borderRadius:"50%",background:isAdmin?"#f59e0b22":"#0F9DAD22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:isAdmin?"#f59e0b":"#0F9DAD" }}>
+          <MoiBeeLogo size={30}/>
+          <div>
+            <div style={{ fontSize:16,fontWeight:800,lineHeight:1 }}><span style={{ color:"#0F9DAD" }}>moi</span><span style={{ color:t.text }}>BEE</span></div>
+            <div style={{ fontSize:8,color:"#0F9DAD",fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase" }}>Track Every Blessing</div>
+          </div>
+        </div>
+
+        {/* Center: Admin tab switcher (always visible, including mobile) */}
+        {isAdmin && (
+          <div style={{ display:"flex",background:t.surface2,border:`1px solid ${t.border}`,borderRadius:10,padding:3,gap:3 }}>
+            {[["events","🎉 Events"],["users","👥 Users"]].map(([k,l])=>(
+              <button key={k} onClick={()=>setAppPage(k)}
+                style={{ padding:"7px 14px",borderRadius:8,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,transition:"all 0.2s",
+                  background:appPage===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",
+                  color:appPage===k?"#fff":t.textMuted }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Right: User + actions */}
+        <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+          <div style={{ display:"flex",alignItems:"center",gap:6,background:t.surface2,borderRadius:10,padding:"5px 10px" }}>
+            <div style={{ width:22,height:22,borderRadius:"50%",background:isAdmin?"#f59e0b22":"#0F9DAD22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:isAdmin?"#f59e0b":"#0F9DAD",flexShrink:0 }}>
               {userProfile?.name?.[0]?.toUpperCase()||"?"}
             </div>
-            <span className="root-user-name" style={{ fontWeight:600,color:t.text }}>{userProfile?.name}</span>
+            <span className="root-user-name" style={{ fontSize:12,fontWeight:600,color:t.text }}>{userProfile?.name}</span>
             {isAdmin && <span style={{ background:"#f59e0b18",color:"#f59e0b",borderRadius:20,padding:"1px 6px",fontSize:9,fontWeight:800 }}>ADMIN</span>}
           </div>
           <ThemeToggle theme={theme} toggleTheme={toggleTheme}/>
-          <button onClick={()=>signOut(auth)} style={{ display:"flex",alignItems:"center",gap:7,background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"7px 13px",color:t.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>
-            <Icon name="logout" size={14}/> Sign Out
+          <button onClick={()=>signOut(auth)} title="Sign Out"
+            style={{ display:"flex",alignItems:"center",gap:6,background:"transparent",border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 10px",color:t.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>
+            <Icon name="logout" size={14}/>
+            <span className="root-user-name">Sign Out</span>
           </button>
         </div>
       </div>
 
-      <div className="root-content" style={{ maxWidth:1100,margin:"0 auto",padding:"28px 24px" }}>
+      <div className="root-content" style={{ maxWidth:1100,margin:"0 auto",padding:"24px 20px",width:"100%" }}>
         {appPage==="events" && (
           <EventsHub
             theme={theme} toggleTheme={toggleTheme}
