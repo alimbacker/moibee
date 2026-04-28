@@ -1786,11 +1786,11 @@ function MoiBee() {
     if(!authUser) return;
     const q = query(
       collection(db,"notifications"),
-      where("toUid","==",authUser.uid),
-      orderBy("createdAt","desc")
+      where("toUid","==",authUser.uid)
     );
     const unsub = onSnapshot(q, snap=>{
-      const notifs = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const notifs = snap.docs.map(d=>({id:d.id,...d.data()}))
+        .sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)); // sort client-side, no index needed
       setNotifications(notifs);
       // Browser push notification for new unread ones
       const newest = notifs[0];
