@@ -1474,20 +1474,48 @@ function LoginPage({ theme, toggleTheme }) {
 // ─── PENDING APPROVAL PAGE ────────────────────────────────────────────
 function PendingPage({ theme, toggleTheme, userProfile }) {
   const t = THEMES[theme];
+  const [pulse, setPulse] = useState(false);
+
+  // Poll every 5s and show a banner when approved
+  useEffect(()=>{
+    if(!userProfile?.id) return;
+    const unsub = onSnapshot(doc(db,"users",userProfile.id), snap=>{
+      if(snap.exists() && snap.data().status==="approved"){
+        // Force page reload to enter the app
+        window.location.reload();
+      }
+    });
+    // Subtle pulse animation
+    const t = setInterval(()=>setPulse(p=>!p),1500);
+    return ()=>{ unsub(); clearInterval(t); };
+  },[userProfile?.id]);
+
   return (
     <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora','Segoe UI',sans-serif",padding:16 }}>
       <div style={{ position:"fixed",top:20,right:20 }}><ThemeToggle theme={theme} toggleTheme={toggleTheme}/></div>
-      <div style={{ textAlign:"center",maxWidth:400 }}>
-        <div style={{ fontSize:56,marginBottom:16 }}>⏳</div>
-        <div style={{ fontSize:22,fontWeight:800,color:t.text,marginBottom:8 }}>Account Pending Approval</div>
-        <div style={{ fontSize:14,color:t.textMuted,marginBottom:24,lineHeight:1.7 }}>
-          Hi <strong style={{ color:t.text }}>{userProfile?.name}</strong>, your account is waiting for admin approval.<br/>
-          You'll be able to log in once an admin approves your account.
+      <div style={{ textAlign:"center",maxWidth:420 }}>
+        {/* Animated hourglass */}
+        <div style={{ fontSize:64,marginBottom:20,transition:"transform 0.5s",transform:pulse?"rotate(10deg)":"rotate(-10deg)" }}>⏳</div>
+        <div style={{ fontSize:22,fontWeight:800,color:t.text,marginBottom:10 }}>Account Pending Approval</div>
+        <div style={{ fontSize:14,color:t.textMuted,marginBottom:24,lineHeight:1.8 }}>
+          Hi <strong style={{ color:t.text }}>{userProfile?.name}</strong>, your account is waiting for admin approval.
+          <br/>This page will update automatically once approved.
         </div>
-        <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,padding:20,marginBottom:20,fontSize:13,color:t.textMuted }}>
-          📧 <strong>{userProfile?.email}</strong>
+
+        {/* Info card */}
+        <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:22,marginBottom:24 }}>
+          <div style={{ fontSize:13,color:t.textMuted,marginBottom:12 }}>Registered as</div>
+          <div style={{ fontSize:16,fontWeight:700,color:t.text }}>📧 {userProfile?.email}</div>
+          {/* Live status indicator */}
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:16,padding:"10px 0",borderTop:`1px solid ${t.border}` }}>
+            <div style={{ width:8,height:8,borderRadius:"50%",background:"#f59e0b",boxShadow:"0 0 8px #f59e0b",animation:"pulse 1.5s infinite" }}/>
+            <span style={{ fontSize:12,color:"#f59e0b",fontWeight:600 }}>Waiting for admin approval...</span>
+          </div>
+          <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
         </div>
-        <button onClick={()=>signOut(auth)} style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 24px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:13 }}>Sign Out</button>
+
+        <button onClick={()=>signOut(auth)} style={{ background:"transparent",border:`1px solid ${t.border}`,borderRadius:10,padding:"11px 28px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:13 }}>Sign Out</button>
+        <div style={{ fontSize:11,color:t.textDim,marginTop:16 }}>🐝 Powered by AllBee Solutions</div>
       </div>
     </div>
   );
@@ -1527,10 +1555,28 @@ function UserManagementPage({ t, addToast, allEvents }) {
 
   const approveUser = async (user) => {
     await updateDoc(doc(db,"users",user.id),{ status:"approved" });
+    // Write notification for the user
+    await addDoc(collection(db,"notifications"),{
+      toUid: user.id,
+      type: "approved",
+      title: "Account Approved! 🎉",
+      message: `Hi ${user.name}, your MoiBee account has been approved. You can now log in and access your events.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
     addToast(`✅ ${user.name} approved`);
   };
   const rejectUser = async (user) => {
     await updateDoc(doc(db,"users",user.id),{ status:"rejected" });
+    // Write notification for the user
+    await addDoc(collection(db,"notifications"),{
+      toUid: user.id,
+      type: "rejected",
+      title: "Account Not Approved",
+      message: `Hi ${user.name}, your MoiBee account request was not approved. Please contact the admin for more info.`,
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
     addToast(`${user.name} rejected`,"error");
   };
   const makeAdmin = async (user) => {
@@ -1692,7 +1738,9 @@ function MoiBee() {
   const [activeEvent, setActiveEvent] = useState(null);
   const [theme,       setTheme]       = useState(()=>load("moibee_theme","dark"));
   const [allEvents,   setAllEvents]   = useState([]);
-  const [appPage,     setAppPage]     = useState("events"); // events | users
+  const [appPage,       setAppPage]       = useState("events"); // events | users
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifs,    setShowNotifs]    = useState(false);
   const t = THEMES[theme];
   const toggleTheme = () => { const n=theme==="dark"?"light":"dark"; setTheme(n); save("moibee_theme",n); };
   const [toasts, setToasts] = useState([]);
@@ -1724,6 +1772,34 @@ function MoiBee() {
     });
     return unsub;
   },[]);
+
+  // ── Request browser notification permission
+  useEffect(()=>{
+    if(!authUser) return;
+    if("Notification" in window && Notification.permission==="default"){
+      Notification.requestPermission();
+    }
+  },[authUser]);
+
+  // ── Load notifications for current user
+  useEffect(()=>{
+    if(!authUser) return;
+    const q = query(
+      collection(db,"notifications"),
+      where("toUid","==",authUser.uid),
+      orderBy("createdAt","desc")
+    );
+    const unsub = onSnapshot(q, snap=>{
+      const notifs = snap.docs.map(d=>({id:d.id,...d.data()}));
+      setNotifications(notifs);
+      // Browser push notification for new unread ones
+      const newest = notifs[0];
+      if(newest && !newest.read && Notification.permission==="granted"){
+        new Notification(newest.title,{ body:newest.message, icon:"/favicon.svg" });
+      }
+    });
+    return unsub;
+  },[authUser]);
 
   // ── Load all events (needed for admin assignment + filtering for users)
   useEffect(()=>{
@@ -1764,7 +1840,7 @@ function MoiBee() {
 
   // ── Main hub
   return (
-    <div style={{ minHeight:"100vh",background:t.bg,fontFamily:"'Sora','Segoe UI',sans-serif",color:t.text,display:"flex",flexDirection:"column" }}>
+    <div onClick={()=>setShowNotifs(false)} style={{ minHeight:"100vh",background:t.bg,fontFamily:"'Sora','Segoe UI',sans-serif",color:t.text,display:"flex",flexDirection:"column" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
         @keyframes fadeUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
@@ -1812,6 +1888,65 @@ function MoiBee() {
             <span className="root-user-name" style={{ fontSize:12,fontWeight:600,color:t.text }}>{userProfile?.name}</span>
             {isAdmin && <span style={{ background:"#f59e0b18",color:"#f59e0b",borderRadius:20,padding:"1px 6px",fontSize:9,fontWeight:800 }}>ADMIN</span>}
           </div>
+          {/* Notification Bell */}
+          <div style={{ position:"relative" }}>
+            <button onClick={()=>setShowNotifs(v=>!v)} title="Notifications"
+              style={{ position:"relative",background:t.surface2,border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 10px",color:t.textMuted,cursor:"pointer",display:"flex",alignItems:"center" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width={17} height={17} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+              {notifications.filter(n=>!n.read).length > 0 && (
+                <span style={{ position:"absolute",top:-4,right:-4,background:"#ef4444",color:"#fff",borderRadius:"50%",width:17,height:17,fontSize:10,fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  {notifications.filter(n=>!n.read).length}
+                </span>
+              )}
+            </button>
+
+            {/* Notification Dropdown */}
+            {showNotifs && (
+              <div style={{ position:"absolute",right:0,top:"calc(100% + 8px)",width:320,background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",zIndex:300,overflow:"hidden" }}>
+                <div style={{ padding:"14px 16px",borderBottom:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"space-between" }}>
+                  <span style={{ fontWeight:700,fontSize:14,color:t.text }}>🔔 Notifications</span>
+                  {notifications.some(n=>!n.read) && (
+                    <button onClick={async()=>{
+                      for(const n of notifications.filter(x=>!x.read)){
+                        await updateDoc(doc(db,"notifications",n.id),{read:true});
+                      }
+                    }} style={{ background:"none",border:"none",color:"#0F9DAD",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:600 }}>
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+                <div style={{ maxHeight:320,overflowY:"auto" }}>
+                  {notifications.length===0 && (
+                    <div style={{ padding:"32px 16px",textAlign:"center",color:t.textDim,fontSize:13 }}>No notifications yet</div>
+                  )}
+                  {notifications.map(n=>(
+                    <div key={n.id} onClick={async()=>{ if(!n.read) await updateDoc(doc(db,"notifications",n.id),{read:true}); }}
+                      style={{ padding:"12px 16px",borderBottom:`1px solid ${t.surface2}`,background:n.read?"transparent":n.type==="approved"?"#10b98108":"#ef444408",cursor:"pointer",transition:"background 0.15s" }}>
+                      <div style={{ display:"flex",alignItems:"flex-start",gap:10 }}>
+                        <div style={{ fontSize:20,flexShrink:0,marginTop:1 }}>
+                          {n.type==="approved"?"✅":n.type==="rejected"?"❌":"🔔"}
+                        </div>
+                        <div style={{ flex:1 }}>
+                          <div style={{ fontSize:13,fontWeight:700,color:t.text,marginBottom:2 }}>{n.title}</div>
+                          <div style={{ fontSize:12,color:t.textMuted,lineHeight:1.5 }}>{n.message}</div>
+                          <div style={{ fontSize:10,color:t.textDim,marginTop:4 }}>
+                            {n.createdAt?new Date(n.createdAt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):""}
+                          </div>
+                        </div>
+                        {!n.read && <div style={{ width:8,height:8,borderRadius:"50%",background:n.type==="approved"?"#10b981":"#ef4444",flexShrink:0,marginTop:4 }}/>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ padding:"10px 16px",borderTop:`1px solid ${t.border}`,textAlign:"center" }}>
+                  <button onClick={()=>setShowNotifs(false)} style={{ background:"none",border:"none",color:t.textDim,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Close</button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <ThemeToggle theme={theme} toggleTheme={toggleTheme}/>
           <button onClick={()=>signOut(auth)} title="Sign Out"
             style={{ display:"flex",alignItems:"center",gap:6,background:"transparent",border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 10px",color:t.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>
