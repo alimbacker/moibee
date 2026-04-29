@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { useState, useEffect, useCallback } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, where } from "firebase/firestore";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, setDoc, getDoc, where, getDocs } from "firebase/firestore";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
 
 // ─── Firebase ─────────────────────────────────────────────────────────
@@ -1540,10 +1540,11 @@ function RejectedPage({ theme, toggleTheme }) {
 // ─── ADMIN USER MANAGEMENT PANEL ─────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
 function UserManagementPage({ t, addToast, allEvents }) {
-  const [users,  setUsers]  = useState([]);
-  const [loading,setLoading]= useState(true);
-  const [tab,    setTab]    = useState("pending"); // pending | approved | all
-  const [assignModal, setAssignModal] = useState(null); // user being assigned events
+  const [users,        setUsers]        = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [tab,          setTab]          = useState("pending"); // pending | approved | all
+  const [assignModal,  setAssignModal]  = useState(null);
+  const [deleteConfirm,setDeleteConfirm]= useState(null); // user to delete
 
   useEffect(()=>{
     const unsub = onSnapshot(collection(db,"users"), snap=>{
@@ -1588,8 +1589,17 @@ function UserManagementPage({ t, addToast, allEvents }) {
     addToast(`${user.name} role changed to User`);
   };
   const deleteUser = async (user) => {
-    await deleteDoc(doc(db,"users",user.id));
-    addToast(`${user.name} removed`,"error");
+    try {
+      // 1. Delete Firestore profile — removes all app access
+      await deleteDoc(doc(db,"users",user.id));
+      // 2. Also delete their notifications
+      const nSnap = await getDocs(query(collection(db,"notifications"), where("toUid","==",user.id)));
+      for(const n of nSnap.docs) await deleteDoc(n.ref);
+      addToast(`${user.name} removed successfully`,"error");
+      setDeleteConfirm(null);
+    } catch(err) {
+      addToast("Error removing user: "+err.message,"error");
+    }
   };
 
   const shown = tab==="pending" ? users.filter(u=>u.status==="pending")
@@ -1659,7 +1669,7 @@ function UserManagementPage({ t, addToast, allEvents }) {
                   : <button onClick={()=>removeAdmin(user)} style={{ background:t.surface2,border:`1px solid ${t.border}`,borderRadius:8,padding:"7px 14px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12 }}>Remove Admin</button>
                 }
               </>}
-              <button onClick={()=>deleteUser(user)} style={{ background:"#ef444412",border:"none",borderRadius:8,padding:"7px 9px",color:"#ef4444",cursor:"pointer" }}><Icon name="delete" size={13}/></button>
+              <button onClick={()=>setDeleteConfirm(user)} title="Remove User" style={{ background:"#ef444412",border:"none",borderRadius:8,padding:"7px 9px",color:"#ef4444",cursor:"pointer" }}><Icon name="delete" size={13}/></button>
             </div>
           </div>
         ))}
@@ -1669,6 +1679,26 @@ function UserManagementPage({ t, addToast, allEvents }) {
       {assignModal && (
         <AssignEventsModal user={assignModal} allEvents={allEvents} onClose={()=>setAssignModal(null)} addToast={addToast} t={t}/>
       )}
+
+      {/* Delete Confirm Modal */}
+      <Modal open={!!deleteConfirm} onClose={()=>setDeleteConfirm(null)} title="Remove User?" th={t}>
+        <div style={{ textAlign:"center",padding:"8px 0 4px" }}>
+          <div style={{ fontSize:44,marginBottom:14 }}>🗑️</div>
+          <div style={{ fontSize:16,fontWeight:700,color:t.text,marginBottom:6 }}>{deleteConfirm?.name}</div>
+          <div style={{ fontSize:13,color:t.textMuted,marginBottom:6 }}>{deleteConfirm?.email}</div>
+        </div>
+        <div style={{ background:"#ef444412",border:"1px solid #ef444433",borderRadius:10,padding:"12px 14px",margin:"14px 0",fontSize:13,color:"#fca5a5" }}>
+          ⚠️ This will <strong>permanently remove</strong> this user from MoiBee. They will lose access immediately. This cannot be undone.
+        </div>
+        <div style={{ display:"flex",gap:10,justifyContent:"flex-end" }}>
+          <button onClick={()=>setDeleteConfirm(null)} style={{ padding:"10px 20px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit",fontSize:14 }}>
+            Cancel
+          </button>
+          <button onClick={()=>deleteUser(deleteConfirm)} style={{ padding:"10px 22px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,boxShadow:"0 4px 16px #ef444444" }}>
+            🗑️ Remove User
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -1760,10 +1790,19 @@ function MoiBee() {
         if(snap.exists()){
           setUserProfile({id:snap.id,...snap.data()});
         } else {
-          // Could be the very first admin — auto-create admin profile
-          const profile = { name:"Admin", email:user.email, role:"admin", status:"approved", assignedEvents:[], createdAt:new Date().toISOString() };
-          await setDoc(doc(db,"users",user.uid), profile);
-          setUserProfile({id:user.uid,...profile});
+          // First user ever — auto-create as admin
+          // Check if ANY users exist first
+          const allUsersSnap = await getDocs(collection(db,"users"));
+          if(allUsersSnap.empty){
+            const profile = { name:"Admin", email:user.email, role:"admin", status:"approved", assignedEvents:[], createdAt:new Date().toISOString() };
+            await setDoc(doc(db,"users",user.uid), profile);
+            setUserProfile({id:user.uid,...profile});
+          } else {
+            // User was deleted by admin — force sign out
+            await signOut(auth);
+            setAuthUser(null);
+            setUserProfile(null);
+          }
         }
       } else {
         setAuthUser(null);
