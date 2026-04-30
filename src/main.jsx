@@ -1351,22 +1351,59 @@ function LoginPage({ theme, toggleTheme }) {
     if(pass.length<6){ setErr("Password must be at least 6 characters"); return; }
     setLoading(true); setErr("");
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-      // Create user profile in Firestore — pending approval
-      await setDoc(doc(db,"users",cred.user.uid), {
+      let uid;
+
+      try {
+        // Try creating new account
+        const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
+        uid = cred.user.uid;
+      } catch(createErr) {
+        if(createErr.code === "auth/email-already-in-use") {
+          // Auth account exists but Firestore profile was deleted (removed user re-registering)
+          // Sign in with their existing auth account to get uid
+          try {
+            const cred2 = await signInWithEmailAndPassword(auth, email.trim(), pass);
+            uid = cred2.user.uid;
+            // Check if Firestore profile exists
+            const snap = await getDoc(doc(db,"users",uid));
+            if(snap.exists()) {
+              // Profile exists — truly already registered
+              await signOut(auth);
+              setErr("This email is already registered. Please sign in instead.");
+              setLoading(false);
+              return;
+            }
+            // Profile doesn't exist — deleted user re-registering, continue below
+          } catch(signInErr) {
+            // Wrong password for existing account
+            if(signInErr.code==="auth/wrong-password"||signInErr.code==="auth/invalid-credential") {
+              setErr("This email is already registered with a different password.");
+            } else {
+              setErr(signInErr.message);
+            }
+            setLoading(false);
+            return;
+          }
+        } else {
+          throw createErr;
+        }
+      }
+
+      // Create fresh Firestore profile — pending approval
+      await setDoc(doc(db,"users",uid), {
         name: name.trim(),
         email: email.trim().toLowerCase(),
         role: "user",
-        status: "pending", // pending | approved | rejected
+        status: "pending",
         assignedEvents: [],
         createdAt: new Date().toISOString(),
       });
       await signOut(auth);
-      setMsg("✅ Account created! Please wait for admin approval before logging in.");
+      setMsg("✅ Account registered! Please wait for admin approval before logging in.");
       setTab("login");
       setEmail(""); setPass(""); setName("");
     } catch(e) {
-      setErr(e.code==="auth/email-already-in-use" ? "This email is already registered." : e.message);
+      setErr(e.message);
     }
     setLoading(false);
   };
