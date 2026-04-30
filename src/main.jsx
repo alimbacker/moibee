@@ -1577,11 +1577,12 @@ function RejectedPage({ theme, toggleTheme }) {
 // ─── ADMIN USER MANAGEMENT PANEL ─────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
 function UserManagementPage({ t, addToast, allEvents }) {
-  const [users,        setUsers]        = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [tab,          setTab]          = useState("pending"); // pending | approved | all
-  const [assignModal,  setAssignModal]  = useState(null);
-  const [deleteConfirm,setDeleteConfirm]= useState(null); // user to delete
+  const [users,         setUsers]         = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [tab,           setTab]           = useState("all");
+  const [assignModal,   setAssignModal]   = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [showAddUser,   setShowAddUser]   = useState(false);
 
   useEffect(()=>{
     const unsub = onSnapshot(collection(db,"users"), snap=>{
@@ -1593,70 +1594,67 @@ function UserManagementPage({ t, addToast, allEvents }) {
 
   const approveUser = async (user) => {
     await updateDoc(doc(db,"users",user.id),{ status:"approved" });
-    // Write notification for the user
     await addDoc(collection(db,"notifications"),{
-      toUid: user.id,
-      type: "approved",
-      title: "Account Approved! 🎉",
-      message: `Hi ${user.name}, your MoiBee account has been approved. You can now log in and access your events.`,
-      read: false,
-      createdAt: new Date().toISOString(),
+      toUid:user.id, type:"approved",
+      title:"Account Approved! 🎉",
+      message:`Hi ${user.name}, your MoiBee account has been approved. You can now log in and access your events.`,
+      read:false, createdAt:new Date().toISOString(),
     });
     addToast(`✅ ${user.name} approved`);
   };
   const rejectUser = async (user) => {
     await updateDoc(doc(db,"users",user.id),{ status:"rejected" });
-    // Write notification for the user
     await addDoc(collection(db,"notifications"),{
-      toUid: user.id,
-      type: "rejected",
-      title: "Account Not Approved",
-      message: `Hi ${user.name}, your MoiBee account request was not approved. Please contact the admin for more info.`,
-      read: false,
-      createdAt: new Date().toISOString(),
+      toUid:user.id, type:"rejected",
+      title:"Account Not Approved",
+      message:`Hi ${user.name}, your account request was not approved. Please contact the admin.`,
+      read:false, createdAt:new Date().toISOString(),
     });
     addToast(`${user.name} rejected`,"error");
   };
-  const makeAdmin = async (user) => {
-    await updateDoc(doc(db,"users",user.id),{ role:"admin" });
-    addToast(`${user.name} is now an Admin`);
-  };
-  const removeAdmin = async (user) => {
-    await updateDoc(doc(db,"users",user.id),{ role:"user" });
-    addToast(`${user.name} role changed to User`);
-  };
+  const makeAdmin   = async (user) => { await updateDoc(doc(db,"users",user.id),{role:"admin"}); addToast(`${user.name} is now Admin`); };
+  const removeAdmin = async (user) => { await updateDoc(doc(db,"users",user.id),{role:"user"});  addToast(`${user.name} role changed to User`); };
+
   const deleteUser = async (user) => {
     try {
-      // 1. Delete Firestore profile — removes all app access
       await deleteDoc(doc(db,"users",user.id));
-      // 2. Also delete their notifications
-      const nSnap = await getDocs(query(collection(db,"notifications"), where("toUid","==",user.id)));
+      const nSnap = await getDocs(query(collection(db,"notifications"),where("toUid","==",user.id)));
       for(const n of nSnap.docs) await deleteDoc(n.ref);
-      addToast(`${user.name} removed successfully`,"error");
+      addToast(`${user.name} removed`,"error");
       setDeleteConfirm(null);
-    } catch(err) {
-      addToast("Error removing user: "+err.message,"error");
-    }
+    } catch(err){ addToast("Error: "+err.message,"error"); }
   };
 
-  const shown = tab==="pending" ? users.filter(u=>u.status==="pending")
-              : tab==="approved"? users.filter(u=>u.status==="approved")
+  const shown = tab==="pending"  ? users.filter(u=>u.status==="pending")
+              : tab==="approved" ? users.filter(u=>u.status==="approved")
               : users;
 
   const statusColor = { pending:"#f59e0b", approved:"#10b981", rejected:"#ef4444" };
 
   return (
     <div style={{ animation:"fadeUp 0.4s ease" }}>
+      {/* Header row */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10 }}>
+        <div>
+          <div style={{ fontSize:20,fontWeight:800,color:t.text,fontFamily:"'DM Serif Display',Georgia,serif" }}>User Management</div>
+          <div style={{ fontSize:12,color:t.textMuted,marginTop:2 }}>{users.length} total · {users.filter(u=>u.status==="pending").length} pending approval</div>
+        </div>
+        <button onClick={()=>setShowAddUser(true)}
+          style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:11,padding:"10px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}>
+          <Icon name="add" size={16}/> Add User
+        </button>
+      </div>
+
       {/* Tabs */}
-      <div style={{ display:"flex",gap:8,marginBottom:20,flexWrap:"wrap" }}>
-        {[["pending","⏳ Pending",users.filter(u=>u.status==="pending").length],
+      <div style={{ display:"flex",gap:7,marginBottom:18,flexWrap:"wrap" }}>
+        {[["all","👥 All",users.length],
+          ["pending","⏳ Pending",users.filter(u=>u.status==="pending").length],
           ["approved","✅ Approved",users.filter(u=>u.status==="approved").length],
-          ["all","👥 All Users",users.length]
         ].map(([k,l,cnt])=>(
-          <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px",borderRadius:10,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,
+          <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 16px",borderRadius:10,cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,
             background:tab===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",
-            color:tab===k?"#fff":t.textMuted,border:`1px solid ${tab===k?"transparent":t.border}` }}>
-            {l} <span style={{ background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"1px 7px",fontSize:11,marginLeft:4 }}>{cnt}</span>
+            color:tab===k?"#fff":t.textMuted, border:`1px solid ${tab===k?"transparent":t.border}` }}>
+            {l} <span style={{ background:"rgba(255,255,255,0.2)",borderRadius:20,padding:"1px 7px",fontSize:11,marginLeft:3 }}>{cnt}</span>
           </button>
         ))}
       </div>
@@ -1664,79 +1662,230 @@ function UserManagementPage({ t, addToast, allEvents }) {
       {loading && <div style={{ color:t.textMuted,padding:40,textAlign:"center" }}>Loading users...</div>}
 
       {!loading && shown.length===0 && (
-        <div style={{ textAlign:"center",padding:"60px 20px",background:t.surface,borderRadius:16,border:`2px dashed ${t.border}` }}>
-          <div style={{ fontSize:40,marginBottom:12 }}>👤</div>
-          <div style={{ color:t.textMuted,fontSize:14 }}>{tab==="pending"?"No pending approvals":"No users found"}</div>
+        <div style={{ textAlign:"center",padding:"50px 20px",background:t.surface,borderRadius:16,border:`2px dashed ${t.border}` }}>
+          <div style={{ fontSize:36,marginBottom:10 }}>👤</div>
+          <div style={{ color:t.textMuted,fontSize:14,marginBottom:16 }}>{tab==="pending"?"No pending approvals":"No users found"}</div>
+          <button onClick={()=>setShowAddUser(true)} style={{ background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:10,padding:"10px 22px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+            + Add User Manually
+          </button>
         </div>
       )}
 
-      <div style={{ display:"flex",flexDirection:"column",gap:12 }}>
+      <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
         {shown.map(user=>(
-          <div key={user.id} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,padding:20,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap" }}>
+          <div key={user.id} style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,padding:18,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap" }}>
             {/* Avatar */}
-            <div style={{ width:44,height:44,borderRadius:"50%",background:`${user.role==="admin"?"#f59e0b":"#0F9DAD"}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0 }}>
+            <div style={{ width:42,height:42,borderRadius:"50%",background:`${user.role==="admin"?"#f59e0b":"#0F9DAD"}22`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:17,fontWeight:700,color:user.role==="admin"?"#f59e0b":"#0F9DAD",flexShrink:0 }}>
               {user.name?.[0]?.toUpperCase()||"?"}
             </div>
             {/* Info */}
-            <div style={{ flex:1,minWidth:180 }}>
-              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:3 }}>
-                <span style={{ fontSize:15,fontWeight:700,color:t.text }}>{user.name}</span>
-                {user.role==="admin" && <span style={{ background:"#f59e0b18",color:"#f59e0b",borderRadius:20,padding:"2px 8px",fontSize:10,fontWeight:700 }}>👑 ADMIN</span>}
+            <div style={{ flex:1,minWidth:160 }}>
+              <div style={{ display:"flex",alignItems:"center",gap:7,marginBottom:2 }}>
+                <span style={{ fontSize:14,fontWeight:700,color:t.text }}>{user.name}</span>
+                {user.role==="admin" && <span style={{ background:"#f59e0b18",color:"#f59e0b",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700 }}>👑 ADMIN</span>}
+                {user.addedByAdmin && <span style={{ background:"#6366f118",color:"#6366f1",borderRadius:20,padding:"1px 7px",fontSize:10,fontWeight:700 }}>🔧 Added by Admin</span>}
               </div>
               <div style={{ fontSize:12,color:t.textMuted }}>{user.email}</div>
-              <div style={{ fontSize:11,color:t.textDim,marginTop:3 }}>
-                Joined {user.createdAt?new Date(user.createdAt).toLocaleDateString("en-IN"):"—"}
-                {user.assignedEvents?.length>0 && ` · ${user.assignedEvents.length} event(s) assigned`}
+              <div style={{ fontSize:11,color:t.textDim,marginTop:2 }}>
+                {user.createdAt?new Date(user.createdAt).toLocaleDateString("en-IN"):"—"}
+                {user.assignedEvents?.length>0&&` · ${user.assignedEvents.length} event(s)`}
               </div>
             </div>
-            {/* Status badge */}
-            <span style={{ background:`${statusColor[user.status]||"#6b7280"}18`,color:statusColor[user.status]||"#6b7280",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:700 }}>
+            {/* Status */}
+            <span style={{ background:`${statusColor[user.status]||"#6b7280"}18`,color:statusColor[user.status]||"#6b7280",borderRadius:20,padding:"4px 11px",fontSize:11,fontWeight:700,flexShrink:0 }}>
               {user.status==="pending"?"⏳ Pending":user.status==="approved"?"✅ Approved":"❌ Rejected"}
             </span>
             {/* Actions */}
-            <div style={{ display:"flex",gap:7,flexWrap:"wrap" }}>
+            <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
               {user.status==="pending" && <>
-                <button onClick={()=>approveUser(user)} style={{ background:"#10b98118",border:"1px solid #10b98133",borderRadius:8,padding:"7px 14px",color:"#10b981",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>✓ Approve</button>
-                <button onClick={()=>rejectUser(user)} style={{ background:"#ef444418",border:"1px solid #ef444433",borderRadius:8,padding:"7px 14px",color:"#ef4444",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>✗ Reject</button>
+                <button onClick={()=>approveUser(user)} style={{ background:"#10b98118",border:"1px solid #10b98133",borderRadius:8,padding:"6px 12px",color:"#10b981",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>✓ Approve</button>
+                <button onClick={()=>rejectUser(user)} style={{ background:"#ef444418",border:"1px solid #ef444433",borderRadius:8,padding:"6px 12px",color:"#ef4444",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>✗ Reject</button>
               </>}
               {user.status==="approved" && <>
-                <button onClick={()=>setAssignModal(user)} style={{ background:"#6366f118",border:"1px solid #6366f133",borderRadius:8,padding:"7px 14px",color:"#6366f1",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>📋 Assign Events</button>
+                <button onClick={()=>setAssignModal(user)} style={{ background:"#6366f118",border:"1px solid #6366f133",borderRadius:8,padding:"6px 12px",color:"#6366f1",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>📋 Assign</button>
                 {user.role!=="admin"
-                  ? <button onClick={()=>makeAdmin(user)} style={{ background:"#f59e0b18",border:"1px solid #f59e0b33",borderRadius:8,padding:"7px 14px",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>👑 Make Admin</button>
-                  : <button onClick={()=>removeAdmin(user)} style={{ background:t.surface2,border:`1px solid ${t.border}`,borderRadius:8,padding:"7px 14px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12 }}>Remove Admin</button>
+                  ?<button onClick={()=>makeAdmin(user)} style={{ background:"#f59e0b18",border:"1px solid #f59e0b33",borderRadius:8,padding:"6px 12px",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>👑 Admin</button>
+                  :<button onClick={()=>removeAdmin(user)} style={{ background:t.surface2,border:`1px solid ${t.border}`,borderRadius:8,padding:"6px 12px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12 }}>Remove Admin</button>
                 }
               </>}
-              <button onClick={()=>setDeleteConfirm(user)} title="Remove User" style={{ background:"#ef444412",border:"none",borderRadius:8,padding:"7px 9px",color:"#ef4444",cursor:"pointer" }}><Icon name="delete" size={13}/></button>
+              {user.status==="rejected" &&
+                <button onClick={()=>approveUser(user)} style={{ background:"#10b98118",border:"1px solid #10b98133",borderRadius:8,padding:"6px 12px",color:"#10b981",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700 }}>↩ Re-approve</button>
+              }
+              <button onClick={()=>setDeleteConfirm(user)} style={{ background:"#ef444412",border:"none",borderRadius:8,padding:"6px 8px",color:"#ef4444",cursor:"pointer" }}><Icon name="delete" size={13}/></button>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Add User Modal */}
+      {showAddUser && <AddUserModal onClose={()=>setShowAddUser(false)} addToast={addToast} t={t} allEvents={allEvents}/>}
+
       {/* Assign Events Modal */}
-      {assignModal && (
-        <AssignEventsModal user={assignModal} allEvents={allEvents} onClose={()=>setAssignModal(null)} addToast={addToast} t={t}/>
-      )}
+      {assignModal && <AssignEventsModal user={assignModal} allEvents={allEvents} onClose={()=>setAssignModal(null)} addToast={addToast} t={t}/>}
 
       {/* Delete Confirm Modal */}
       <Modal open={!!deleteConfirm} onClose={()=>setDeleteConfirm(null)} title="Remove User?" th={t}>
-        <div style={{ textAlign:"center",padding:"8px 0 4px" }}>
-          <div style={{ fontSize:44,marginBottom:14 }}>🗑️</div>
-          <div style={{ fontSize:16,fontWeight:700,color:t.text,marginBottom:6 }}>{deleteConfirm?.name}</div>
-          <div style={{ fontSize:13,color:t.textMuted,marginBottom:6 }}>{deleteConfirm?.email}</div>
-        </div>
-        <div style={{ background:"#ef444412",border:"1px solid #ef444433",borderRadius:10,padding:"12px 14px",margin:"14px 0",fontSize:13,color:"#fca5a5" }}>
-          ⚠️ This will <strong>permanently remove</strong> this user from MoiBee. They will lose access immediately. This cannot be undone.
+        <div style={{ textAlign:"center",padding:"8px 0" }}>
+          <div style={{ fontSize:44,marginBottom:12 }}>🗑️</div>
+          <div style={{ fontSize:16,fontWeight:700,color:t.text,marginBottom:4 }}>{deleteConfirm?.name}</div>
+          <div style={{ fontSize:13,color:t.textMuted,marginBottom:16 }}>{deleteConfirm?.email}</div>
+          <div style={{ background:"#ef444412",border:"1px solid #ef444433",borderRadius:10,padding:"12px 14px",fontSize:13,color:"#fca5a5",marginBottom:20 }}>
+            ⚠️ This will permanently remove this user. They lose access immediately. They can re-register if needed.
+          </div>
         </div>
         <div style={{ display:"flex",gap:10,justifyContent:"flex-end" }}>
-          <button onClick={()=>setDeleteConfirm(null)} style={{ padding:"10px 20px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit",fontSize:14 }}>
-            Cancel
-          </button>
-          <button onClick={()=>deleteUser(deleteConfirm)} style={{ padding:"10px 22px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700,boxShadow:"0 4px 16px #ef444444" }}>
-            🗑️ Remove User
-          </button>
+          <button onClick={()=>setDeleteConfirm(null)} style={{ padding:"10px 20px",borderRadius:10,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit" }}>Cancel</button>
+          <button onClick={()=>deleteUser(deleteConfirm)} style={{ padding:"10px 22px",borderRadius:10,border:"none",background:"linear-gradient(135deg,#ef4444,#dc2626)",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:14,fontWeight:700 }}>🗑️ Remove</button>
         </div>
       </Modal>
     </div>
+  );
+}
+
+
+// ─── Add User Modal (Admin manually adds a user) ──────────────────────
+function AddUserModal({ onClose, addToast, t, allEvents }) {
+  const [name,     setName]     = useState("");
+  const [email,    setEmail]    = useState("");
+  const [pass,     setPass]     = useState("");
+  const [role,     setRole]     = useState("user");
+  const [selected, setSelected] = useState(new Set());
+  const [saving,   setSaving]   = useState(false);
+  const [err,      setErr]      = useState("");
+
+  const toggle = (id) => setSelected(prev=>{ const n=new Set(prev); n.has(id)?n.delete(id):n.add(id); return n; });
+
+  const handleAdd = async () => {
+    if(!name.trim()||!email.trim()||!pass.trim()){ setErr("Name, email and password are required"); return; }
+    if(pass.length<6){ setErr("Password must be at least 6 characters"); return; }
+    setSaving(true); setErr("");
+    try {
+      // Check if user already exists in Firestore by email
+      const existing = await getDocs(query(collection(db,"users"), where("email","==",email.trim().toLowerCase())));
+      if(!existing.empty){
+        setErr("A user with this email already exists.");
+        setSaving(false);
+        return;
+      }
+
+      // Use Firebase Auth REST API to create user WITHOUT signing out current admin
+      const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+      const resp = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password: pass, returnSecureToken: true }),
+        }
+      );
+      const data = await resp.json();
+      if(data.error){
+        throw new Error(data.error.message==="EMAIL_EXISTS"
+          ? "This email already has an account. They can sign in directly."
+          : data.error.message);
+      }
+      const uid = data.localId;
+
+      // Create Firestore profile — auto approved since admin is adding
+      await setDoc(doc(db,"users",uid),{
+        name:           name.trim(),
+        email:          email.trim().toLowerCase(),
+        role:           role,
+        status:         "approved",
+        assignedEvents: [...selected],
+        createdAt:      new Date().toISOString(),
+        addedByAdmin:   true,
+      });
+
+      // Send welcome notification
+      await addDoc(collection(db,"notifications"),{
+        toUid:     uid,
+        type:      "approved",
+        title:     "Welcome to MoiBee! 🎉",
+        message:   `Hi ${name.trim()}, your account has been created by the admin. You can now sign in with your email and password.`,
+        read:      false,
+        createdAt: new Date().toISOString(),
+      });
+      // Admin stays signed in — no signOut needed!
+
+      addToast(`✅ ${name.trim()} added successfully! They can now sign in.`);
+      onClose();
+    } catch(e) {
+      setErr(e.message||"Something went wrong. Please try again.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <Modal open={true} onClose={onClose} title="➕ Add User Manually" wide={true} th={t}>
+      <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px" }}>
+        <div style={{ gridColumn:"1/-1" }}>
+          <Input label="Full Name" value={name} onChange={setName} placeholder="e.g. Ravi Kumar" required th={t}/>
+        </div>
+        <Input label="Email Address" value={email} onChange={setEmail} type="email" placeholder="ravi@email.com" required th={t}/>
+        <Input label="Password" value={pass} onChange={setPass} type="password" placeholder="Min 6 characters" required th={t}/>
+      </div>
+
+      {/* Role selector */}
+      <div style={{ marginBottom:18 }}>
+        <label style={{ display:"block",fontSize:12,fontWeight:600,color:t.textMuted,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.05em" }}>Role</label>
+        <div style={{ display:"flex",gap:10 }}>
+          {[["user","👤 Regular User","Can access assigned events only"],["admin","👑 Admin","Full access to all events & users"]].map(([v,l,desc])=>(
+            <div key={v} onClick={()=>setRole(v)}
+              style={{ flex:1,padding:"12px 14px",borderRadius:11,border:`2px solid ${role===v?"#0F9DAD":t.border}`,background:role===v?"#0F9DAD0d":t.surface2,cursor:"pointer",transition:"all 0.15s" }}>
+              <div style={{ fontSize:14,fontWeight:700,color:role===v?"#0F9DAD":t.text,marginBottom:3 }}>{l}</div>
+              <div style={{ fontSize:11,color:t.textMuted }}>{desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Assign events (only for regular users) */}
+      {role==="user" && allEvents.length>0 && (
+        <div style={{ marginBottom:18 }}>
+          <label style={{ display:"block",fontSize:12,fontWeight:600,color:t.textMuted,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.05em" }}>
+            Assign Events <span style={{ color:t.textDim,fontWeight:400,textTransform:"none",letterSpacing:0 }}>(optional)</span>
+          </label>
+          <div style={{ display:"flex",flexDirection:"column",gap:7,maxHeight:200,overflowY:"auto" }}>
+            {allEvents.map(ev=>{
+              const color   = eventColor(ev.eventType);
+              const checked = selected.has(ev.id);
+              return (
+                <div key={ev.id} onClick={()=>toggle(ev.id)}
+                  style={{ display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,border:`1.5px solid ${checked?color:t.border}`,background:checked?`${color}0d`:t.surface2,cursor:"pointer",transition:"all 0.15s" }}>
+                  <div style={{ width:18,height:18,borderRadius:4,border:`2px solid ${checked?color:t.border}`,background:checked?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                    {checked&&<Icon name="check" size={11}/>}
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:13,fontWeight:600,color:t.text }}>{ev.name}</div>
+                    <div style={{ fontSize:11,color:t.textMuted }}>{eventLabel(ev.eventType)}{ev.eventDate?` · ${new Date(ev.eventDate).toLocaleDateString("en-IN")}`:""}</div>
+                  </div>
+                  <span style={{ background:`${color}18`,color,borderRadius:20,padding:"2px 8px",fontSize:11,fontWeight:700 }}>{formatCurrency(ev.totalAmount||0)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {err && (
+        <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"10px 14px",color:"#fca5a5",fontSize:13,marginBottom:14 }}>
+          ⚠️ {err}
+        </div>
+      )}
+
+      <div style={{ background:`${t.surface2}`,border:`1px solid ${t.border}`,borderRadius:10,padding:"10px 14px",fontSize:12,color:t.textMuted,marginBottom:16 }}>
+        💡 The user will be <strong style={{ color:"#10b981" }}>automatically approved</strong> and can sign in immediately with the email and password you set.
+      </div>
+
+      <div style={{ display:"flex",gap:10 }}>
+        <button onClick={onClose} style={{ flex:1,padding:"12px 0",borderRadius:11,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit",fontSize:14 }}>Cancel</button>
+        <button onClick={handleAdd} disabled={saving}
+          style={{ flex:2,background:saving?t.border:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:11,padding:"12px 0",color:saving?t.textMuted:"#fff",fontSize:14,fontWeight:700,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:saving?"none":"0 4px 16px rgba(15,157,173,0.3)" }}>
+          {saving?"Creating account...":"➕ Add User"}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
