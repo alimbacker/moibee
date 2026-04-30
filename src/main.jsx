@@ -1321,6 +1321,48 @@ const AuthCard = ({ title, subtitle, children, t }) => (
   </div>
 );
 
+// ─── REMOVED PAGE ────────────────────────────────────────────────────
+function RemovedPage({ theme, toggleTheme, email }) {
+  const t = THEMES[theme];
+  const [done, setDone] = useState(false);
+
+  const handleReRegister = async () => {
+    await signOut(auth);
+    setDone(true);
+  };
+
+  if(done) return <LoginPage theme={theme} toggleTheme={toggleTheme}/>;
+
+  return (
+    <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora','Segoe UI',sans-serif",padding:16 }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap'); *{box-sizing:border-box}`}</style>
+      <div style={{ position:"fixed",top:20,right:20 }}><ThemeToggle theme={theme} toggleTheme={toggleTheme}/></div>
+      <div style={{ textAlign:"center",maxWidth:420 }}>
+        <div style={{ fontSize:56,marginBottom:16 }}>🚫</div>
+        <div style={{ fontSize:22,fontWeight:800,color:t.text,marginBottom:10 }}>Account Removed</div>
+        <div style={{ fontSize:14,color:t.textMuted,marginBottom:24,lineHeight:1.8 }}>
+          Your account (<strong style={{ color:t.text }}>{email}</strong>) was removed by the admin.
+        </div>
+        <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:16,padding:24,marginBottom:24 }}>
+          <div style={{ fontSize:14,fontWeight:600,color:t.text,marginBottom:8 }}>Want to re-join?</div>
+          <div style={{ fontSize:13,color:t.textMuted,marginBottom:16,lineHeight:1.7 }}>
+            You can register again with the same email and password. Your request will go to the admin for approval.
+          </div>
+          <button onClick={handleReRegister}
+            style={{ width:"100%",background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:11,padding:"12px 0",color:"#fff",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)",marginBottom:10 }}>
+            Re-register →
+          </button>
+          <button onClick={()=>signOut(auth)}
+            style={{ width:"100%",background:"transparent",border:`1px solid ${t.border}`,borderRadius:11,padding:"10px 0",color:t.textMuted,fontSize:13,cursor:"pointer",fontFamily:"inherit" }}>
+            Sign Out
+          </button>
+        </div>
+        <div style={{ fontSize:11,color:t.textDim }}>🐝 Powered by AllBee Solutions</div>
+      </div>
+    </div>
+  );
+}
+
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────
 function LoginPage({ theme, toggleTheme }) {
   const [tab,    setTab]    = useState("login"); // login | register | reset
@@ -1351,42 +1393,47 @@ function LoginPage({ theme, toggleTheme }) {
     if(pass.length<6){ setErr("Password must be at least 6 characters"); return; }
     setLoading(true); setErr("");
     try {
-      let uid;
+      // Use REST API to create account — doesn't affect current auth session
+      const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+      const resp = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
+        { method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ email:email.trim(), password:pass, returnSecureToken:true }) }
+      );
+      const data = await resp.json();
 
-      try {
-        // Try creating new account
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), pass);
-        uid = cred.user.uid;
-      } catch(createErr) {
-        if(createErr.code === "auth/email-already-in-use") {
-          // Auth account exists but Firestore profile was deleted (removed user re-registering)
-          // Sign in with their existing auth account to get uid
-          try {
-            const cred2 = await signInWithEmailAndPassword(auth, email.trim(), pass);
-            uid = cred2.user.uid;
-            // Check if Firestore profile exists
-            const snap = await getDoc(doc(db,"users",uid));
-            if(snap.exists()) {
-              // Profile exists — truly already registered
-              await signOut(auth);
-              setErr("This email is already registered. Please sign in instead.");
-              setLoading(false);
-              return;
-            }
-            // Profile doesn't exist — deleted user re-registering, continue below
-          } catch(signInErr) {
-            // Wrong password for existing account
-            if(signInErr.code==="auth/wrong-password"||signInErr.code==="auth/invalid-credential") {
-              setErr("This email is already registered with a different password.");
-            } else {
-              setErr(signInErr.message);
-            }
+      let uid;
+      if(data.error){
+        if(data.error.message === "EMAIL_EXISTS"){
+          // Auth account exists — check if Firestore profile exists
+          const signResp = await fetch(
+            `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+            { method:"POST", headers:{"Content-Type":"application/json"},
+              body: JSON.stringify({ email:email.trim(), password:pass, returnSecureToken:true }) }
+          );
+          const signData = await signResp.json();
+          if(signData.error){
+            // Wrong password
+            setErr("This email is already registered. Please sign in or use Forgot Password.");
             setLoading(false);
             return;
           }
+          uid = signData.localId;
+          // Check if Firestore profile exists
+          const snap = await getDoc(doc(db,"users",uid));
+          if(snap.exists()){
+            setErr("This email is already registered. Please sign in instead.");
+            setLoading(false);
+            return;
+          }
+          // No profile = removed user re-registering with correct password ✅
         } else {
-          throw createErr;
+          setErr(data.error.message);
+          setLoading(false);
+          return;
         }
+      } else {
+        uid = data.localId;
       }
 
       // Create fresh Firestore profile — pending approval
@@ -1398,12 +1445,15 @@ function LoginPage({ theme, toggleTheme }) {
         assignedEvents: [],
         createdAt: new Date().toISOString(),
       });
-      await signOut(auth);
+
+      // Make sure no active session
+      if(auth.currentUser) await signOut(auth);
+
       setMsg("✅ Account registered! Please wait for admin approval before logging in.");
       setTab("login");
       setEmail(""); setPass(""); setName("");
     } catch(e) {
-      setErr(e.message);
+      setErr(e.message||"Registration failed. Please try again.");
     }
     setLoading(false);
   };
@@ -1971,23 +2021,21 @@ function MoiBee() {
     const unsub = onAuthStateChanged(auth, async (user)=>{
       if(user){
         setAuthUser(user);
-        // Load user profile from Firestore
         const snap = await getDoc(doc(db,"users",user.uid));
         if(snap.exists()){
           setUserProfile({id:snap.id,...snap.data()});
         } else {
-          // First user ever — auto-create as admin
-          // Check if ANY users exist first
+          // No Firestore profile — check if any users exist at all
           const allUsersSnap = await getDocs(collection(db,"users"));
           if(allUsersSnap.empty){
+            // Very first user ever — make them admin
             const profile = { name:"Admin", email:user.email, role:"admin", status:"approved", assignedEvents:[], createdAt:new Date().toISOString() };
             await setDoc(doc(db,"users",user.uid), profile);
             setUserProfile({id:user.uid,...profile});
           } else {
-            // User was deleted by admin — force sign out
-            await signOut(auth);
-            setAuthUser(null);
-            setUserProfile(null);
+            // Auth account exists but Firestore profile deleted (removed user)
+            // Set a special "removed" profile so we can show a proper message
+            setUserProfile({ id:user.uid, email:user.email, status:"removed" });
           }
         }
       } else {
@@ -2052,6 +2100,9 @@ function MoiBee() {
 
   // ── Rejected
   if(userProfile?.status==="rejected") return <RejectedPage theme={theme} toggleTheme={toggleTheme}/>;
+
+  // ── Removed by admin — let them re-register
+  if(userProfile?.status==="removed") return <RemovedPage theme={theme} toggleTheme={toggleTheme} email={userProfile?.email}/>;
 
   const isAdmin = userProfile?.role==="admin";
 
