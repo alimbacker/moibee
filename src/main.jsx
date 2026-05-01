@@ -17,6 +17,183 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const db   = getFirestore(app);
 const auth = getAuth(app);
+
+// ─── Translations ─────────────────────────────────────────────────────
+const LANG = {
+  en: {
+    // Nav
+    dashboard:"Dashboard", addEntry:"Add Entry", records:"Records",
+    export:"Export", eventSettings:"Event Settings",
+    allEvents:"All Events", signOut:"Sign Out", synced:"Synced", offline:"Offline",
+    // Login
+    welcomeBack:"Welcome back", signInTo:"Sign in to manage your events",
+    username:"Username", password:"Password", signIn:"Sign In →",
+    register:"Register", createAccount:"Create account",
+    registerSubtitle:"Register to access MoiBee — admin will approve your account",
+    yourName:"Your Name", email:"Email", fullName:"Full name",
+    createAccountBtn:T("createAccountBtn"), forgotPassword:T("forgotPassword"),
+    resetPassword:"Reset password", resetSubtitle:"Enter your email to receive a reset link",
+    sendReset:T("sendReset"), backToSignIn:T("backToSignIn"),
+    adminApproval:"⏳ New accounts need admin approval before first login",
+    // Dashboard
+    liveEvent:"Live Event · Real-time Sync", giftBreakdown:T("giftBreakdown"),
+    recentEntries:T("recentEntries"), noEntries:T("noEntries"),
+    cashTotal:T("cashTotal"), totalGuests:T("totalGuests"),
+    todayCollection:T("todayCollection"), highestGift:T("highestGift"),
+    physicalGifts:T("physicalGifts"), payments:T("payments"),
+    allEntries:T("allEntries"), today:"today", goldSilver:T("goldSilver"),
+    // Add Entry
+    newEntry:"New Entry", editEntry:"Edit Entry",
+    recordGift:"Record a Gift", updateGiftEntry:"Update Gift Entry",
+    guestName:"Guest Name", mobile:"Mobile", place:"Place",
+    giftType:T("giftType"), quickAmount:T("quickAmount"),
+    amount:T("amount"), notes:"Notes", description:"Description",
+    weightQty:"Weight / Qty", estValue:"Est. Value (₹)",
+    saving:"Saving...", saveEntry:"Save Entry →", update:"Update ✓", cancel:"Cancel",
+    guestNameRequired:"Guest name required", amountRequired:"Amount required",
+    describeGift:"Describe the gift",
+    // Records
+    searchPlaceholder:T("searchPlaceholder"),
+    allTypes:T("allTypes"), newest:T("newest"), oldest:T("oldest"),
+    highestAmt:T("highestAmt"), nameAZ:T("nameAZ"), clear:"Clear",
+    entriesFound:"entries found", cashTotalLabel:T("cashTotalLabel"),
+    noEntriesFound:T("noEntriesFound"),
+    // Receipt
+    printReceipt:"Print Receipt", print:T("openPrint"), close:"Close",
+    giftAmount:"GIFT AMOUNT", gift:"GIFT", paperSize:"Paper Size:",
+    // Export
+    summary:"Summary", guests:T("guests"), downloadCSV:T("downloadCSV"),
+    openPrint:"Print", csvDesc:T("csvDesc"),
+    printDesc:T("printDesc"),
+    // Events Hub
+    activeEvents:"🟢 Active", completedEvents:"✅ Completed",
+    newEvent:"New Event", openEvent:"Open Event →", viewRecords:"View Records →",
+    collected:"Collected", markDone:T("markDone"), reopen:T("reopen"),
+    totalEvents:"Total Events", grandTotal:"Grand Total",
+    noActiveEvents:"All events are completed!", createEvent:"+ Create Event",
+    completedArchive:"Completed Events Archive",
+    markCompleted:"✅ Mark Completed",
+    totalCollected:"Total Collected",
+    // Event Form
+    eventType:"Event Type", eventName:"Event Name", eventDate:"Event Date",
+    venue:"Venue / Place", brideName:"Bride's Name", groomName:"Groom's Name",
+    familyName:"Family Name", receiptNote:"Receipt Note",
+    sheetsWebhook:"Google Sheets Webhook (optional)",
+    createEventBtn:"Create Event →", updateEvent:"Update Event ✓",
+    // Users
+    userManagement:T("userManagement"), addUser:"Add User",
+    pendingApproval:"pending approval", allTab:T("allTab"),
+    pendingTab:T("pendingTab"), approvedTab:T("approvedTab"),
+    approve:T("approve"), reject:T("reject"),
+    assign:T("assign"), makeAdmin:T("makeAdmin"),
+    removeAdmin:T("removeAdmin"), reApprove:T("reApprove"),
+    addedByAdmin:T("addedByAdmin"),
+    removeUser:T("removeUser"), removeUserTitle:T("removeUserTitle"),
+    removeWarning:"This will permanently remove this user. They lose access immediately.",
+    // Notifications
+    notifications:T("notifications"), markAllRead:T("markAllRead"),
+    noNotifications:T("noNotifications"),
+    // Pending page
+    accountPending:T("accountPending"),
+    waitingApproval:T("waitingApproval"),
+    willUpdateAuto:T("willUpdateAuto"),
+    registeredAs:T("registeredAs"), waitingAdmin:T("waitingAdmin"),
+    // Removed page
+    accountRemoved:T("accountRemoved"), removedByAdmin:T("removedByAdmin"),
+    wantToRejoin:T("wantToRejoin"),
+    reRegisterNote:T("reRegisterNote"),
+    reRegister:T("reRegister"),
+  },
+  ta: {
+    // Nav
+    dashboard:"டாஷ்போர்டு", addEntry:"உள்ளீடு சேர்", records:"பதிவுகள்",
+    export:"ஏற்றுமதி", eventSettings:"நிகழ்வு அமைப்புகள்",
+    allEvents:"அனைத்து நிகழ்வுகள்", signOut:"வெளியேறு", synced:"ஒத்திசைக்கப்பட்டது", offline:"இணைப்பு இல்லை",
+    // Login
+    welcomeBack:"மீண்டும் வரவேற்கிறோம்", signInTo:"உங்கள் நிகழ்வுகளை நிர்வகிக்க உள்நுழையவும்",
+    username:"பயனர்பெயர்", password:"கடவுச்சொல்", signIn:"உள்நுழை →",
+    register:"பதிவு செய்", createAccount:"கணக்கு உருவாக்கு",
+    registerSubtitle:"MoiBee அணுகல் பெற பதிவு செய்யுங்கள் — நிர்வாகி அனுமதிப்பார்",
+    yourName:"உங்கள் பெயர்", email:"மின்னஞ்சல்", fullName:"முழு பெயர்",
+    createAccountBtn:"கணக்கு உருவாக்கு →", forgotPassword:"கடவுச்சொல் மறந்தீர்களா?",
+    resetPassword:"கடவுச்சொல் மீட்டமை", resetSubtitle:"மீட்டமை இணைப்பு பெற மின்னஞ்சல் உள்ளிடுங்கள்",
+    sendReset:"மீட்டமை மின்னஞ்சல் அனுப்பு", backToSignIn:"← உள்நுழைவுக்கு திரும்பு",
+    adminApproval:"⏳ புதிய கணக்குகளுக்கு நிர்வாகி அனுமதி தேவை",
+    // Dashboard
+    liveEvent:"நேரடி நிகழ்வு · நேரடி ஒத்திசைவு", giftBreakdown:"பரிசு விவரம்",
+    recentEntries:"சமீபத்திய பதிவுகள்", noEntries:"பதிவுகள் இல்லை",
+    cashTotal:"பண/UPI/வங்கி மொத்தம்", totalGuests:"மொத்த விருந்தினர்கள்",
+    todayCollection:"இன்றைய வசூல்", highestGift:"அதிக பரிசு",
+    physicalGifts:"பொருள் பரிசுகள்", payments:"கொடுப்பனவுகள்",
+    allEntries:"அனைத்து பதிவுகள்", today:"இன்று", goldSilver:"தங்கம், வெள்ளி & மேலும்",
+    // Add Entry
+    newEntry:"புதிய பதிவு", editEntry:"பதிவு திருத்து",
+    recordGift:"பரிசை பதிவு செய்", updateGiftEntry:"பரிசு பதிவை புதுப்பி",
+    guestName:"விருந்தினர் பெயர்", mobile:"கைபேசி", place:"இடம்",
+    giftType:"பரிசு வகை", quickAmount:"விரைவு தொகை",
+    amount:"தொகை (₹)", notes:"குறிப்புகள்", description:"விவரம்",
+    weightQty:"எடை / அளவு", estValue:"மதிப்பீட்டு மதிப்பு (₹)",
+    saving:"சேமிக்கிறது...", saveEntry:"பதிவு சேமி →", update:"புதுப்பி ✓", cancel:"ரத்து செய்",
+    guestNameRequired:"விருந்தினர் பெயர் தேவை", amountRequired:"தொகை தேவை",
+    describeGift:"பரிசை விவரிக்கவும்",
+    // Records
+    searchPlaceholder:"பெயர், இடம், பரிசு தேடு...",
+    allTypes:"அனைத்து வகைகள்", newest:"புதியது முதல்", oldest:"பழையது முதல்",
+    highestAmt:"அதிக ₹", nameAZ:"பெயர் A-Z", clear:"அழி",
+    entriesFound:"பதிவுகள் கிடைத்தன", cashTotalLabel:"பண மொத்தம்:",
+    noEntriesFound:"பதிவுகள் இல்லை",
+    // Receipt
+    printReceipt:"ரசீது அச்சிடு", print:"அச்சிடு", close:"மூடு",
+    giftAmount:"பரிசு தொகை", gift:"பரிசு", paperSize:"காகித அளவு:",
+    // Export
+    summary:"சுருக்கம்", guests:"விருந்தினர்கள்", downloadCSV:"CSV பதிவிறக்கு",
+    openPrint:"அச்சிடு", csvDesc:"Excel அல்லது Google Sheets-ல் திற",
+    printDesc:"அனைத்து பதிவுகளுடன் அச்சிடக்கூடிய அறிக்கை",
+    // Events Hub
+    activeEvents:"🟢 செயலில்", completedEvents:"✅ முடிந்தவை",
+    newEvent:"புதிய நிகழ்வு", openEvent:"நிகழ்வு திற →", viewRecords:"பதிவுகள் பார் →",
+    collected:"வசூலிக்கப்பட்டது", markDone:"✓ முடிந்தது", reopen:"↩ மீண்டும் திற",
+    totalEvents:"மொத்த நிகழ்வுகள்", grandTotal:"மொத்த தொகை",
+    noActiveEvents:"அனைத்து நிகழ்வுகளும் முடிந்தன!", createEvent:"+ நிகழ்வு உருவாக்கு",
+    completedArchive:"முடிந்த நிகழ்வுகள் காப்பகம்",
+    markCompleted:"✅ முடிந்தது என குறி",
+    totalCollected:"மொத்த வசூல்",
+    // Event Form
+    eventType:"நிகழ்வு வகை", eventName:"நிகழ்வு பெயர்", eventDate:"நிகழ்வு தேதி",
+    venue:"இடம்", brideName:"மணமகள் பெயர்", groomName:"மணமகன் பெயர்",
+    familyName:"குடும்பப் பெயர்", receiptNote:"ரசீது குறிப்பு",
+    sheetsWebhook:"Google Sheets Webhook (விருப்பத்தேர்வு)",
+    createEventBtn:"நிகழ்வு உருவாக்கு →", updateEvent:"நிகழ்வு புதுப்பி ✓",
+    // Users
+    userManagement:"பயனர் மேலாண்மை", addUser:"பயனர் சேர்",
+    pendingApproval:"அனுமதி நிலுவையில்", allTab:"👥 அனைவரும்",
+    pendingTab:"⏳ நிலுவையில்", approvedTab:"✅ அனுமதிக்கப்பட்டவர்கள்",
+    approve:"✓ அனுமதி", reject:"✗ நிராகரி",
+    assign:"📋 நியமி", makeAdmin:"👑 நிர்வாகி",
+    removeAdmin:"நிர்வாகி நீக்கு", reApprove:"↩ மீண்டும் அனுமதி",
+    addedByAdmin:"🔧 நிர்வாகியால் சேர்க்கப்பட்டது",
+    removeUser:"🗑️ நீக்கு", removeUserTitle:"பயனரை நீக்கவா?",
+    removeWarning:"இந்த பயனர் நிரந்தரமாக நீக்கப்படுவார். அணுகல் உடனடியாக இழக்கப்படும்.",
+    // Notifications
+    notifications:"🔔 அறிவிப்புகள்", markAllRead:"அனைத்தும் படித்தது என குறி",
+    noNotifications:"அறிவிப்புகள் இல்லை",
+    // Pending page
+    accountPending:"கணக்கு அனுமதி நிலுவையில்",
+    waitingApproval:"உங்கள் கணக்கு நிர்வாகி அனுமதிக்காக காத்திருக்கிறது.",
+    willUpdateAuto:"அனுமதிக்கப்பட்டவுடன் இந்தப் பக்கம் தானாக புதுப்பிக்கப்படும்.",
+    registeredAs:"பதிவு செய்யப்பட்டது", waitingAdmin:"நிர்வாகி அனுமதிக்காக காத்திருக்கிறது...",
+    // Removed page
+    accountRemoved:"கணக்கு நீக்கப்பட்டது", removedByAdmin:"நிர்வாகியால் நீக்கப்பட்டது.",
+    wantToRejoin:"மீண்டும் சேர விரும்புகிறீர்களா?",
+    reRegisterNote:"அதே மின்னஞ்சல் மற்றும் கடவுச்சொல்லுடன் மீண்டும் பதிவு செய்யலாம்.",
+    reRegister:"மீண்டும் பதிவு செய் →",
+  }
+};
+
+// ─── Language context helper ───────────────────────────────────────────
+const t_ = (lang, key) => LANG[lang]?.[key] || LANG.en[key] || key;
+
+
 // ─── Helpers ──────────────────────────────────────────────────────────
 const formatCurrency = (n) => "₹" + Number(n||0).toLocaleString("en-IN");
 const formatDate = (iso) => iso ? new Date(iso).toLocaleString("en-IN", { dateStyle:"medium", timeStyle:"short" }) : "—";
@@ -182,7 +359,8 @@ const ThemeToggle = ({ theme, toggleTheme }) => (
 // ══════════════════════════════════════════════════════════════════════
 // ─── EVENTS HUB (home screen after login) ────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
-function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, visibleEvents, allEvents, addToast }) {
+function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, lang, T, isAdmin, visibleEvents, allEvents, addToast }) {
+  if(!T) T = (k)=>k;
   const events = visibleEvents || [];
   const loading = false;
   const [tab,       setTab]       = useState("active");
@@ -277,7 +455,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
           <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16 }}>
             <div style={{ background:t.surface2,borderRadius:10,padding:"10px 12px",textAlign:"center" }}>
               <div style={{ fontSize:17,fontWeight:800,color:done?"#10b981":"#0F9DAD" }}>{formatCurrency(ev.totalAmount||0)}</div>
-              <div style={{ fontSize:10,color:t.textMuted,marginTop:2 }}>Collected</div>
+              <div style={{ fontSize:10,color:t.textMuted,marginTop:2 }}>{T("collected")}</div>
             </div>
             <div style={{ background:t.surface2,borderRadius:10,padding:"10px 12px",textAlign:"center" }}>
               <div style={{ fontSize:17,fontWeight:800,color:t.text }}>{ev.entryCount||0}</div>
@@ -287,7 +465,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
 
           <button onClick={()=>onSelectEvent(ev)}
             style={{ width:"100%",background:done?"linear-gradient(135deg,#10b981,#059669)":`linear-gradient(135deg,${color},${color}cc)`,border:"none",borderRadius:11,padding:"11px 0",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
-            {done?"View Records →":"Open Event →"}
+            {done?T("viewRecords"):T("openEvent")}
           </button>
         </div>
       </div>
@@ -302,10 +480,10 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
         {!loading && events.length>0 && (
           <div className="hub-summary" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:24 }}>
             {[
-              { label:"Total Events",    value:events.length,              color:"#6366f1", sub:"all time" },
-              { label:"Active Events",   value:activeEvents.length,        color:"#0F9DAD", sub:formatCurrency(totalActive) },
-              { label:"Completed Events",value:completedEvents.length,     color:"#10b981", sub:formatCurrency(totalCompleted) },
-              { label:"Grand Total",     value:formatCurrency(totalAll),   color:"#f59e0b", sub:"all events" },
+              { label:T("totalEvents"),    value:events.length,              color:"#6366f1", sub:"all time" },
+              { label:T("activeEvents"),   value:activeEvents.length,        color:"#0F9DAD", sub:formatCurrency(totalActive) },
+              { label:T("completedEvents"),value:completedEvents.length,     color:"#10b981", sub:formatCurrency(totalCompleted) },
+              { label:T("grandTotal"),     value:formatCurrency(totalAll),   color:"#f59e0b", sub:"all events" },
             ].map(s=>(
               <div key={s.label} style={{ background:t.surface,border:`1px solid ${s.color}22`,borderRadius:14,padding:"16px 18px" }}>
                 <div style={{ fontSize:22,fontWeight:800,color:s.color,fontFamily:"'DM Serif Display',Georgia,serif" }}>{s.value}</div>
@@ -321,8 +499,8 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
           {/* Tab pills */}
           <div style={{ display:"flex",background:t.surface,border:`1px solid ${t.border}`,borderRadius:12,padding:4,gap:4 }}>
             {[
-              { key:"active",    label:"🟢 Active",    count:activeEvents.length },
-              { key:"completed", label:"✅ Completed",  count:completedEvents.length },
+              { key:"active",    label:T("activeEvents"),    count:activeEvents.length },
+              { key:"completed", label:T("completedEvents"),  count:completedEvents.length },
             ].map(tb=>(
               <button key={tb.key} onClick={()=>setTab(tb.key)}
                 style={{ display:"flex",alignItems:"center",gap:7,padding:"8px 18px",borderRadius:9,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:13,fontWeight:700,transition:"all 0.2s",
@@ -334,7 +512,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, isAdmin, vi
             ))}
           </div>
 
-          <button onClick={()=>setShowCreate(true)} style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"11px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}><Icon name="add" size={16}/> New Event</button>
+          <button onClick={()=>setShowCreate(true)} style={{ display:"flex",alignItems:"center",gap:8,background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:12,padding:"11px 20px",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(15,157,173,0.3)" }}><Icon name="add" size={16}/> {T("newEvent")}</button>
         </div>
 
         {/* Loading */}
@@ -530,11 +708,11 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
   const deleteEntry = async (id)  => { await deleteDoc(doc(db,"events",event.id,"entries",id)); };
 
   const navItems = [
-    {id:"dashboard",label:"Dashboard",icon:"dashboard"},
-    {id:"add",label:"Add Entry",icon:"add"},
-    {id:"records",label:"Records",icon:"records"},
-    {id:"export",label:"Export",icon:"export"},
-    {id:"settings",label:"Event Settings",icon:"settings"},
+    {id:"dashboard",label:T("dashboard"),icon:"dashboard"},
+    {id:"add",label:T("addEntry"),icon:"add"},
+    {id:"records",label:T("records"),icon:"records"},
+    {id:"export",label:T("export"),icon:"export"},
+    {id:"settings",label:T("eventSettings"),icon:"settings"},
   ];
 
   const color = eventColor(event.eventType);
@@ -559,7 +737,7 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
       <div className="sidebar-panel" style={{ width:240,background:t.sidebarBg,borderRight:`1px solid ${t.border}`,display:"flex",flexDirection:"column",padding:"20px 0",position:"fixed",top:0,left:sidebarOpen?0:-240,height:"100vh",zIndex:200,transition:"left 0.3s ease" }}>
         <div style={{ padding:"0 16px 16px",borderBottom:`1px solid ${t.border}`,marginBottom:12 }}>
           <button onClick={onBack} style={{ display:"flex",alignItems:"center",gap:8,background:t.surface2,border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 12px",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:600,marginBottom:14,width:"100%" }}>
-            <Icon name="back" size={13}/> All Events
+            <Icon name="back" size={13}/> {T("allEvents")}
           </button>
           <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:6 }}>
             <span style={{ fontSize:18 }}>{eventLabel(event.eventType).split(" ")[0]}</span>
@@ -608,10 +786,10 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
         </div>
 
         <div style={{ flex:1,padding:"18px 14px",maxWidth:1200,width:"100%" }} className="event-content">
-          {page==="dashboard" && <DashboardPage entries={entries} event={event} t={t} loading={loading}/>}
-          {page==="add"       && <AddEntryPage addEntry={addEntry} updateEntry={updateEntry} addToast={addToast} editEntry={editEntry} setEditEntry={setEditEntry} setPage={setPage} event={event} t={t}/>}
-          {page==="records"   && <RecordsPage entries={entries} addToast={addToast} setEditEntry={setEditEntry} setPage={setPage} setReceiptEntry={setReceiptEntry} setDeleteConfirm={setDeleteConfirm} event={event} t={t}/>}
-          {page==="export"    && <ExportPage entries={entries} event={event} addToast={addToast} t={t}/>}
+          {page==="dashboard" && <DashboardPage entries={entries} event={event} t={t} loading={loading} T={T}/>}
+          {page==="add"       && <AddEntryPage addEntry={addEntry} updateEntry={updateEntry} addToast={addToast} editEntry={editEntry} setEditEntry={setEditEntry} setPage={setPage} event={event} t={t} T={T}/>}
+          {page==="records"   && <RecordsPage entries={entries} addToast={addToast} setEditEntry={setEditEntry} setPage={setPage} setReceiptEntry={setReceiptEntry} setDeleteConfirm={setDeleteConfirm} event={event} t={t} T={T}/>}
+          {page==="export"    && <ExportPage entries={entries} event={event} addToast={addToast} t={t} T={T}/>}
           {page==="settings"  && <EventSettingsPage event={event} addToast={addToast} t={t}/>}
         </div>
       </div>
@@ -630,7 +808,8 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
 }
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────
-function DashboardPage({ entries, event, t, loading }) {
+function DashboardPage({ entries, event, t, loading, T }) {
+  if(!T) T = (k)=>k;
   const moneyEntries = entries.filter(e=>isMoneyType(e.giftType||e.mode));
   const giftEntries  = entries.filter(e=>!isMoneyType(e.giftType||e.mode));
   const total        = moneyEntries.reduce((s,e)=>s+Number(e.amount||0),0);
@@ -704,7 +883,8 @@ function DashboardPage({ entries, event, t, loading }) {
 }
 
 // ─── ADD ENTRY ────────────────────────────────────────────────────────
-function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry, setPage, event, t }) {
+function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry, setPage, event, t, T }) {
+  if(!T) T = (k)=>k;
   const blank={name:"",mobile:"",place:"",giftType:"Cash",amount:"",giftDesc:"",giftWeight:"",giftUnit:"g",notes:""};
   const [form,      setForm]      = useState(()=>editEntry?{...blank,...editEntry}:blank);
   const [saving,    setSaving]    = useState(false);
@@ -716,9 +896,9 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
   const quickAmounts=[101,501,1001,2001,5001,10001];
 
   const handleSubmit=async()=>{
-    if(!form.name.trim()){addToast("Guest name required","warning");return;}
-    if(isMoney&&!form.amount){addToast("Amount required","warning");return;}
-    if(!isMoney&&!form.giftDesc.trim()){addToast("Describe the gift","warning");return;}
+    if(!form.name.trim()){addToast(T("guestNameRequired"),"warning");return;}
+    if(isMoney&&!form.amount){addToast(T("amountRequired"),"warning");return;}
+    if(!isMoney&&!form.giftDesc.trim()){addToast(T("describeGift"),"warning");return;}
     setSaving(true);
     try {
       const payload={...form,amount:isMoney?Number(form.amount):0};
@@ -851,12 +1031,12 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
       )}
 
       <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:18,padding:28 }}>
-        <div style={{ fontSize:12,color:"#0F9DAD",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4 }}>{editEntry?"✏️ Edit":"🎁 New"} Entry</div>
-        <div style={{ fontSize:20,fontWeight:800,color:t.text,fontFamily:"'DM Serif Display',Georgia,serif",marginBottom:22 }}>{editEntry?"Update Gift Entry":"Record a Gift"}</div>
+        <div style={{ fontSize:12,color:"#0F9DAD",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4 }}>{editEntry?("✏️ " + T("editEntry")):("🎁 " + T("newEntry"))}</div>
+        <div style={{ fontSize:20,fontWeight:800,color:t.text,fontFamily:"'DM Serif Display',Georgia,serif",marginBottom:22 }}>{editEntry?T("updateGiftEntry"):T("recordGift")}</div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 14px" }}>
-          <div style={{ gridColumn:"1/-1" }}><Input label="Guest Name" value={form.name} onChange={v=>set("name",v)} placeholder="Full name" required th={t}/></div>
-          <Input label="Mobile" value={form.mobile} onChange={v=>set("mobile",v)} placeholder="9876543210" type="tel" th={t}/>
-          <Input label="Place" value={form.place} onChange={v=>set("place",v)} placeholder="Chennai" th={t}/>
+          <div style={{ gridColumn:"1/-1" }}><Input label=T("guestName")} value={form.name} onChange={v=>set("name",v)} placeholder="Full name" required th={t}/></div>
+          <Input label=T("mobile")} value={form.mobile} onChange={v=>set("mobile",v)} placeholder="9876543210" type="tel" th={t}/>
+          <Input label=T("place")} value={form.place} onChange={v=>set("place",v)} placeholder="Chennai" th={t}/>
         </div>
         {/* Gift type grid */}
         <div style={{ marginBottom:18 }}>
@@ -900,7 +1080,7 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
         <div style={{ display:"flex",gap:10 }}>
           {editEntry&&<button onClick={()=>{setEditEntry(null);setPage("records");}} style={{ flex:1,padding:"13px 0",borderRadius:11,border:`1px solid ${t.border}`,background:"transparent",color:t.textMid,cursor:"pointer",fontFamily:"inherit",fontSize:14 }}>Cancel</button>}
           <button onClick={handleSubmit} disabled={saving} style={{ flex:2,background:saving?t.border:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:11,padding:"13px 0",color:saving?t.textMuted:"#fff",fontSize:15,fontWeight:700,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit",boxShadow:saving?"none":"0 4px 20px rgba(15,157,173,0.3)" }}>
-            {saving?"Saving...":editEntry?"Update ✓":"Save Entry →"}
+            {saving?T("saving"):editEntry?T("update"):T("saveEntry")}
           </button>
         </div>
       </div>
@@ -909,7 +1089,8 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
 }
 
 // ─── RECORDS ─────────────────────────────────────────────────────────
-function RecordsPage({ entries, addToast, setEditEntry, setPage, setReceiptEntry, setDeleteConfirm, event, t }) {
+function RecordsPage({ entries, addToast, setEditEntry, setPage, setReceiptEntry, setDeleteConfirm, event, t, T }) {
+  if(!T) T = (k)=>k;
   const [search,setSearch]=useState("");
   const [filterType,setFilterType]=useState("All");
   const [filterDate,setFilterDate]=useState("");
@@ -1178,7 +1359,8 @@ function ReceiptModal({ entry, event, onClose, t }) {
 }
 
 // ─── EXPORT ───────────────────────────────────────────────────────────
-function ExportPage({ entries, event, addToast, t }) {
+function ExportPage({ entries, event, addToast, t, T }) {
+  if(!T) T = (k)=>k;
   const moneyEntries=entries.filter(e=>isMoneyType(e.giftType||e.mode));
   const giftEntries=entries.filter(e=>!isMoneyType(e.giftType||e.mode));
   const total=moneyEntries.reduce((s,e)=>s+Number(e.amount||0),0);
@@ -1215,7 +1397,7 @@ function ExportPage({ entries, event, addToast, t }) {
       <div style={{ background:t.surface,border:`1px solid ${t.border}`,borderRadius:14,padding:20,marginBottom:16 }}>
         <div style={{ fontSize:12,color:t.textMuted,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:14 }}>Summary — {event.name}</div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:10 }}>
-          {[["Cash Total",formatCurrency(total),"#0F9DAD"],["Guests",entries.length,t.text],["Gifts",giftEntries.length,"#ec4899"],...GIFT_TYPES.map(g=>[g.label,byType[g.value],g.color])].map(([l,v,c])=>(
+          {[[T("cashTotal"),formatCurrency(total),"#0F9DAD"],["Guests",entries.length,t.text],["Gifts",giftEntries.length,"#ec4899"],...GIFT_TYPES.map(g=>[g.label,byType[g.value],g.color])].map(([l,v,c])=>(
             <div key={l} style={{ textAlign:"center",padding:12,background:t.surface2,borderRadius:10 }}>
               <div style={{ fontSize:16,fontWeight:800,color:c }}>{v}</div>
               <div style={{ fontSize:10,color:t.textMuted,marginTop:3 }}>{l}</div>
@@ -1323,6 +1505,8 @@ const AuthCard = ({ title, subtitle, children, t }) => (
 
 // ─── REMOVED PAGE ────────────────────────────────────────────────────
 function RemovedPage({ theme, toggleTheme, email }) {
+  const lang = load("moibee_lang","en");
+  const T = (k) => t_(lang, k);
   const t = THEMES[theme];
   const [done, setDone] = useState(false);
 
@@ -1364,7 +1548,11 @@ function RemovedPage({ theme, toggleTheme, email }) {
 }
 
 // ─── LOGIN PAGE ───────────────────────────────────────────────────────
-function LoginPage({ theme, toggleTheme }) {
+function LoginPage({ theme, toggleTheme, lang:initLang, toggleLang }) {
+  const [localLang, setLocalLang] = useState(()=>load("moibee_lang","en"));
+  const activeLang = initLang || localLang;
+  const T = (k) => t_(activeLang, k);
+  const localToggleLang = toggleLang || (()=>{ const n=localLang==="en"?"ta":"en"; setLocalLang(n); save("moibee_lang",n); });
   const [tab,    setTab]    = useState("login"); // login | register | reset
   const [email,  setEmail]  = useState("");
   const [pass,   setPass]   = useState("");
@@ -1488,7 +1676,7 @@ function LoginPage({ theme, toggleTheme }) {
   return (
     <div style={{ minHeight:"100vh",background:t.bg,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Sora','Segoe UI',sans-serif",padding:16 }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap'); *{box-sizing:border-box} @keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}`}</style>
-      <div style={{ position:"fixed",top:20,right:20 }}><ThemeToggle theme={theme} toggleTheme={toggleTheme}/></div>
+      <div style={{ position:"fixed",top:20,right:20,display:"flex",gap:8 }}><LangToggle lang={activeLang} toggleLang={localToggleLang}/><ThemeToggle theme={theme} toggleTheme={toggleTheme}/></div>
       <div style={{ width:"100%",maxWidth:420,animation:"fadeUp 0.5s ease" }}>
         {/* Logo */}
         <div style={{ textAlign:"center",marginBottom:32 }}>
@@ -1517,7 +1705,7 @@ function LoginPage({ theme, toggleTheme }) {
         {msg && <div style={{ background:"#10b98118",border:"1px solid #10b98144",borderRadius:10,padding:"11px 14px",color:"#10b981",fontSize:13,fontWeight:500,marginBottom:16 }}>{msg}</div>}
 
         {tab==="login" && (
-          <AuthCard title="Welcome back" subtitle="Sign in to your MoiBee account" t={t}>
+          <AuthCard title={T("welcomeBack")} subtitle={T("signInTo")} t={t}>
             {renderInput("Email", email, setEmail, "email", "you@email.com")}
             {renderInput("Password", pass, setPass, "password", "••••••••")}
             {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
@@ -1529,7 +1717,7 @@ function LoginPage({ theme, toggleTheme }) {
         )}
 
         {tab==="register" && (
-          <AuthCard title="Create account" subtitle="Register to access MoiBee — admin will approve your account" t={t}>
+          <AuthCard title={T("createAccount")} subtitle={T("registerSubtitle")} t={t}>
             {renderInput("Your Name", name, setName, "text", "Full name")}
             {renderInput("Email", email, setEmail, "email", "you@email.com")}
             {renderInput("Password", pass, setPass, "password", "Min 6 characters")}
@@ -1542,7 +1730,7 @@ function LoginPage({ theme, toggleTheme }) {
         )}
 
         {tab==="reset" && (
-          <AuthCard title="Reset password" subtitle="Enter your email to receive a reset link" t={t}>
+          <AuthCard title={T("resetPassword")} subtitle={T("resetSubtitle")} t={t}>
             {renderInput("Email", email, setEmail, "email", "you@email.com")}
             {err && <div style={{ background:"#7f1d1d20",border:"1px solid #ef444444",borderRadius:8,padding:"9px 13px",color:"#fca5a5",fontSize:13,marginBottom:12 }}>{err}</div>}
             <Btn onClick={handleReset} label="Send Reset Email"/>
@@ -1560,6 +1748,8 @@ function LoginPage({ theme, toggleTheme }) {
 
 // ─── PENDING APPROVAL PAGE ────────────────────────────────────────────
 function PendingPage({ theme, toggleTheme, userProfile }) {
+  const lang = load("moibee_lang","en");
+  const T = (k) => t_(lang, k);
   const t = THEMES[theme];
   const [pulse, setPulse] = useState(false);
 
@@ -1626,7 +1816,8 @@ function RejectedPage({ theme, toggleTheme }) {
 // ══════════════════════════════════════════════════════════════════════
 // ─── ADMIN USER MANAGEMENT PANEL ─────────────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
-function UserManagementPage({ t, addToast, allEvents }) {
+function UserManagementPage({ t, lang, T, addToast, allEvents }) {
+  if(!T) T = (k)=>k;
   const [users,         setUsers]         = useState([]);
   const [loading,       setLoading]       = useState(true);
   const [tab,           setTab]           = useState("all");
@@ -2007,6 +2198,9 @@ function MoiBee() {
   const [appPage,       setAppPage]       = useState("events"); // events | users
   const [notifications, setNotifications] = useState([]);
   const [showNotifs,    setShowNotifs]    = useState(false);
+  const [lang,          setLang]          = useState(()=>load("moibee_lang","en"));
+  const T = (key) => t_(lang, key); // translation helper
+  const toggleLang = () => { const n=lang==="en"?"ta":"en"; setLang(n); save("moibee_lang",n); };
   const t = THEMES[theme];
   const toggleTheme = () => { const n=theme==="dark"?"light":"dark"; setTheme(n); save("moibee_theme",n); };
   const [toasts, setToasts] = useState([]);
@@ -2093,7 +2287,7 @@ function MoiBee() {
   );
 
   // ── Not logged in
-  if(!authUser) return <LoginPage theme={theme} toggleTheme={toggleTheme}/>;
+  if(!authUser) return <LoginPage theme={theme} toggleTheme={toggleTheme} lang={lang} toggleLang={toggleLang}/>;
 
   // ── Pending approval
   if(userProfile?.status==="pending") return <PendingPage theme={theme} toggleTheme={toggleTheme} userProfile={userProfile}/>;
@@ -2111,7 +2305,7 @@ function MoiBee() {
 
   // ── Inside an event
   if(activeEvent) return (
-    <EventApp event={activeEvent} theme={theme} toggleTheme={toggleTheme} onBack={()=>setActiveEvent(null)} t={t} isAdmin={isAdmin}/>
+    <EventApp event={activeEvent} theme={theme} toggleTheme={toggleTheme} onBack={()=>setActiveEvent(null)} t={t} lang={lang} T={T} isAdmin={isAdmin}/>
   );
 
   // ── Main hub
@@ -2144,7 +2338,7 @@ function MoiBee() {
         {/* Center: Admin tab switcher (always visible, including mobile) */}
         {isAdmin && (
           <div style={{ display:"flex",background:t.surface2,border:`1px solid ${t.border}`,borderRadius:10,padding:3,gap:3 }}>
-            {[["events","🎉 Events"],["users","👥 Users"]].map(([k,l])=>(
+            {[["events","🎉 " + T("allEvents")],["users",T("allTab")]].map(([k,l])=>(
               <button key={k} onClick={()=>setAppPage(k)}
                 style={{ padding:"7px 14px",borderRadius:8,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,fontWeight:700,transition:"all 0.2s",
                   background:appPage===k?"linear-gradient(135deg,#0F9DAD,#0a7a87)":"transparent",
@@ -2223,11 +2417,12 @@ function MoiBee() {
             )}
           </div>
 
+          <LangToggle lang={lang} toggleLang={toggleLang}/>
           <ThemeToggle theme={theme} toggleTheme={toggleTheme}/>
-          <button onClick={()=>signOut(auth)} title="Sign Out"
+          <button onClick={()=>signOut(auth)} title={T("signOut")}
             style={{ display:"flex",alignItems:"center",gap:6,background:"transparent",border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 10px",color:t.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>
             <Icon name="logout" size={14}/>
-            <span className="root-user-name">Sign Out</span>
+            <span className="root-user-name">{T("signOut")}</span>
           </button>
         </div>
       </div>
@@ -2238,7 +2433,7 @@ function MoiBee() {
             theme={theme} toggleTheme={toggleTheme}
             onSelectEvent={setActiveEvent}
             onLogout={()=>signOut(auth)}
-            t={t}
+            t={t} lang={lang} T={T}
             isAdmin={isAdmin}
             visibleEvents={visibleEvents}
             allEvents={allEvents}
@@ -2246,7 +2441,7 @@ function MoiBee() {
           />
         )}
         {appPage==="users" && isAdmin && (
-          <UserManagementPage t={t} addToast={addToast} allEvents={allEvents}/>
+          <UserManagementPage t={t} lang={lang} T={T} addToast={addToast} allEvents={allEvents}/>
         )}
       </div>
       <Toast toasts={toasts}/>
