@@ -639,7 +639,8 @@ function EventFormModal({ open, editEvent, onClose, addToast, t }) {
 // ══════════════════════════════════════════════════════════════════════
 // ─── EVENT APP (inside a single event) ───────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
-function EventApp({ event, theme, toggleTheme, onBack, t }) {
+function EventApp({ event, theme, toggleTheme, onBack, t, lang, T }) {
+  if(!T) T = (k) => t_(load("moibee_lang","en"), k);
   const [page, setPage]           = useState("dashboard");
   const [entries, setEntries]     = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -773,7 +774,7 @@ function EventApp({ event, theme, toggleTheme, onBack, t }) {
         </div>
       </div>
 
-      {receiptEntry && <ReceiptModal entry={receiptEntry} event={event} onClose={()=>setReceiptEntry(null)} t={t}/>}
+      {receiptEntry && <ReceiptModal entry={receiptEntry} event={event} onClose={()=>setReceiptEntry(null)} t={t} T={T}/>}
       <Modal open={!!deleteConfirm} onClose={()=>setDeleteConfirm(null)} title="Confirm Delete" th={t}>
         <p style={{ color:t.textMid,marginTop:0 }}>Delete entry for <strong style={{ color:t.text }}>{deleteConfirm?.name}</strong>? This cannot be undone.</p>
         <div style={{ display:"flex",gap:12,justifyContent:"flex-end",marginTop:20 }}>
@@ -2284,7 +2285,7 @@ function MoiBee() {
 
   // ── Inside an event
   if(activeEvent) return (
-    <EventApp event={activeEvent} theme={theme} toggleTheme={toggleTheme} onBack={()=>setActiveEvent(null)} t={t} lang={lang} T={T} isAdmin={isAdmin}/>
+    <EventApp event={activeEvent} theme={theme} toggleTheme={toggleTheme} onBack={()=>setActiveEvent(null)} t={t} lang={lang} T={T}/>
   );
 
   // ── Main hub
