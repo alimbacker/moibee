@@ -1034,9 +1034,9 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
         <div style={{ fontSize:12,color:"#0F9DAD",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4 }}>{editEntry?("✏️ " + T("editEntry")):("🎁 " + T("newEntry"))}</div>
         <div style={{ fontSize:20,fontWeight:800,color:t.text,fontFamily:"'DM Serif Display',Georgia,serif",marginBottom:22 }}>{editEntry?T("updateGiftEntry"):T("recordGift")}</div>
         <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:"0 14px" }}>
-          <div style={{ gridColumn:"1/-1" }}><Input label=T("guestName")} value={form.name} onChange={v=>set("name",v)} placeholder="Full name" required th={t}/></div>
-          <Input label=T("mobile")} value={form.mobile} onChange={v=>set("mobile",v)} placeholder="9876543210" type="tel" th={t}/>
-          <Input label=T("place")} value={form.place} onChange={v=>set("place",v)} placeholder="Chennai" th={t}/>
+          <div style={{ gridColumn:"1/-1" }}><Input label={T("guestName")} value={form.name} onChange={v=>set("name",v)} placeholder="Full name" required th={t}/></div>
+          <Input label={T("mobile")} value={form.mobile} onChange={v=>set("mobile",v)} placeholder="9876543210" type="tel" th={t}/>
+          <Input label={T("place")} value={form.place} onChange={v=>set("place",v)} placeholder="Chennai" th={t}/>
         </div>
         {/* Gift type grid */}
         <div style={{ marginBottom:18 }}>
