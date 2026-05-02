@@ -21,112 +21,92 @@ const auth = getAuth(app);
 // ─── Translations ─────────────────────────────────────────────────────
 const LANG = {
   en: {
-    // Nav
     dashboard:"Dashboard", addEntry:"Add Entry", records:"Records",
     export:"Export", eventSettings:"Event Settings",
     allEvents:"All Events", signOut:"Sign Out", synced:"Synced", offline:"Offline",
-    // Login
     welcomeBack:"Welcome back", signInTo:"Sign in to manage your events",
-    username:"Username", password:"Password", signIn:"Sign In →",
-    register:"Register", createAccount:"Create account",
+    signIn:"Sign In →", register:"Register", createAccount:"Create account",
     registerSubtitle:"Register to access MoiBee — admin will approve your account",
     yourName:"Your Name", email:"Email", fullName:"Full name",
-    createAccountBtn:T("createAccountBtn"), forgotPassword:T("forgotPassword"),
+    createAccountBtn:"Create Account →", forgotPassword:"Forgot password?",
     resetPassword:"Reset password", resetSubtitle:"Enter your email to receive a reset link",
-    sendReset:T("sendReset"), backToSignIn:T("backToSignIn"),
+    sendReset:"Send Reset Email", backToSignIn:"← Back to Sign In",
     adminApproval:"⏳ New accounts need admin approval before first login",
-    // Dashboard
-    liveEvent:"Live Event · Real-time Sync", giftBreakdown:T("giftBreakdown"),
-    recentEntries:T("recentEntries"), noEntries:T("noEntries"),
-    cashTotal:T("cashTotal"), totalGuests:T("totalGuests"),
-    todayCollection:T("todayCollection"), highestGift:T("highestGift"),
-    physicalGifts:T("physicalGifts"), payments:T("payments"),
-    allEntries:T("allEntries"), today:"today", goldSilver:T("goldSilver"),
-    // Add Entry
+    liveEvent:"Live Event · Real-time Sync", giftBreakdown:"Gift Breakdown",
+    recentEntries:"Recent Entries", noEntries:"No entries yet",
+    cashTotal:"Cash/UPI/Bank Total", totalGuests:"Total Guests",
+    todayCollection:"Today's Collection", highestGift:"Highest Gift",
+    physicalGifts:"Physical Gifts", payments:"payments",
+    allEntries:"all entries", today:"today", goldSilver:"gold, silver & more",
     newEntry:"New Entry", editEntry:"Edit Entry",
     recordGift:"Record a Gift", updateGiftEntry:"Update Gift Entry",
     guestName:"Guest Name", mobile:"Mobile", place:"Place",
-    giftType:T("giftType"), quickAmount:T("quickAmount"),
-    amount:T("amount"), notes:"Notes", description:"Description",
+    giftType:"Gift Type", quickAmount:"Quick Amount",
+    amount:"Amount (₹)", notes:"Notes", description:"Description",
     weightQty:"Weight / Qty", estValue:"Est. Value (₹)",
     saving:"Saving...", saveEntry:"Save Entry →", update:"Update ✓", cancel:"Cancel",
     guestNameRequired:"Guest name required", amountRequired:"Amount required",
     describeGift:"Describe the gift",
-    // Records
-    searchPlaceholder:T("searchPlaceholder"),
-    allTypes:T("allTypes"), newest:T("newest"), oldest:T("oldest"),
-    highestAmt:T("highestAmt"), nameAZ:T("nameAZ"), clear:"Clear",
-    entriesFound:"entries found", cashTotalLabel:T("cashTotalLabel"),
-    noEntriesFound:T("noEntriesFound"),
-    // Receipt
-    printReceipt:"Print Receipt", print:T("openPrint"), close:"Close",
+    searchPlaceholder:"Search name, place, gift...",
+    allTypes:"All Types", newest:"Newest", oldest:"Oldest",
+    highestAmt:"Highest ₹", nameAZ:"Name A-Z", clear:"Clear",
+    entriesFound:"entries found", cashTotalLabel:"Cash Total:",
+    noEntriesFound:"No entries found",
+    printReceipt:"Print Receipt", print:"Print", close:"Close",
     giftAmount:"GIFT AMOUNT", gift:"GIFT", paperSize:"Paper Size:",
-    // Export
-    summary:"Summary", guests:T("guests"), downloadCSV:T("downloadCSV"),
-    openPrint:"Print", csvDesc:T("csvDesc"),
-    printDesc:T("printDesc"),
-    // Events Hub
+    summary:"Summary", guests:"Guests", downloadCSV:"Download CSV",
+    openPrint:"Print", csvDesc:"Open in Excel or Google Sheets",
+    printDesc:"Full printable report with all entries",
     activeEvents:"🟢 Active", completedEvents:"✅ Completed",
     newEvent:"New Event", openEvent:"Open Event →", viewRecords:"View Records →",
-    collected:"Collected", markDone:T("markDone"), reopen:T("reopen"),
+    collected:"Collected", markDone:"✓ Done", reopen:"↩ Reopen",
     totalEvents:"Total Events", grandTotal:"Grand Total",
     noActiveEvents:"All events are completed!", createEvent:"+ Create Event",
     completedArchive:"Completed Events Archive",
-    markCompleted:"✅ Mark Completed",
-    totalCollected:"Total Collected",
-    // Event Form
+    markCompleted:"✅ Mark Completed", totalCollected:"Total Collected",
     eventType:"Event Type", eventName:"Event Name", eventDate:"Event Date",
     venue:"Venue / Place", brideName:"Bride's Name", groomName:"Groom's Name",
     familyName:"Family Name", receiptNote:"Receipt Note",
     sheetsWebhook:"Google Sheets Webhook (optional)",
     createEventBtn:"Create Event →", updateEvent:"Update Event ✓",
-    // Users
-    userManagement:T("userManagement"), addUser:"Add User",
-    pendingApproval:"pending approval", allTab:T("allTab"),
-    pendingTab:T("pendingTab"), approvedTab:T("approvedTab"),
-    approve:T("approve"), reject:T("reject"),
-    assign:T("assign"), makeAdmin:T("makeAdmin"),
-    removeAdmin:T("removeAdmin"), reApprove:T("reApprove"),
-    addedByAdmin:T("addedByAdmin"),
-    removeUser:T("removeUser"), removeUserTitle:T("removeUserTitle"),
+    userManagement:"User Management", addUser:"Add User",
+    pendingApproval:"pending approval", allTab:"👥 All",
+    pendingTab:"⏳ Pending", approvedTab:"✅ Approved",
+    approve:"✓ Approve", reject:"✗ Reject",
+    assign:"📋 Assign", makeAdmin:"👑 Admin",
+    removeAdmin:"Remove Admin", reApprove:"↩ Re-approve",
+    addedByAdmin:"🔧 Added by Admin",
+    removeUser:"🗑️ Remove", removeUserTitle:"Remove User?",
     removeWarning:"This will permanently remove this user. They lose access immediately.",
-    // Notifications
-    notifications:T("notifications"), markAllRead:T("markAllRead"),
-    noNotifications:T("noNotifications"),
-    // Pending page
-    accountPending:T("accountPending"),
-    waitingApproval:T("waitingApproval"),
-    willUpdateAuto:T("willUpdateAuto"),
-    registeredAs:T("registeredAs"), waitingAdmin:T("waitingAdmin"),
-    // Removed page
-    accountRemoved:T("accountRemoved"), removedByAdmin:T("removedByAdmin"),
-    wantToRejoin:T("wantToRejoin"),
-    reRegisterNote:T("reRegisterNote"),
-    reRegister:T("reRegister"),
+    notifications:"🔔 Notifications", markAllRead:"Mark all read",
+    noNotifications:"No notifications yet",
+    accountPending:"Account Pending Approval",
+    waitingApproval:"your account is waiting for admin approval.",
+    willUpdateAuto:"This page will update automatically once approved.",
+    registeredAs:"Registered as", waitingAdmin:"Waiting for admin approval...",
+    accountRemoved:"Account Removed", removedByAdmin:"was removed by the admin.",
+    wantToRejoin:"Want to re-join?",
+    reRegisterNote:"You can register again with the same email and password.",
+    reRegister:"Re-register →",
   },
   ta: {
-    // Nav
     dashboard:"டாஷ்போர்டு", addEntry:"உள்ளீடு சேர்", records:"பதிவுகள்",
     export:"ஏற்றுமதி", eventSettings:"நிகழ்வு அமைப்புகள்",
     allEvents:"அனைத்து நிகழ்வுகள்", signOut:"வெளியேறு", synced:"ஒத்திசைக்கப்பட்டது", offline:"இணைப்பு இல்லை",
-    // Login
     welcomeBack:"மீண்டும் வரவேற்கிறோம்", signInTo:"உங்கள் நிகழ்வுகளை நிர்வகிக்க உள்நுழையவும்",
-    username:"பயனர்பெயர்", password:"கடவுச்சொல்", signIn:"உள்நுழை →",
-    register:"பதிவு செய்", createAccount:"கணக்கு உருவாக்கு",
+    signIn:"உள்நுழை →", register:"பதிவு செய்", createAccount:"கணக்கு உருவாக்கு",
     registerSubtitle:"MoiBee அணுகல் பெற பதிவு செய்யுங்கள் — நிர்வாகி அனுமதிப்பார்",
     yourName:"உங்கள் பெயர்", email:"மின்னஞ்சல்", fullName:"முழு பெயர்",
     createAccountBtn:"கணக்கு உருவாக்கு →", forgotPassword:"கடவுச்சொல் மறந்தீர்களா?",
     resetPassword:"கடவுச்சொல் மீட்டமை", resetSubtitle:"மீட்டமை இணைப்பு பெற மின்னஞ்சல் உள்ளிடுங்கள்",
     sendReset:"மீட்டமை மின்னஞ்சல் அனுப்பு", backToSignIn:"← உள்நுழைவுக்கு திரும்பு",
     adminApproval:"⏳ புதிய கணக்குகளுக்கு நிர்வாகி அனுமதி தேவை",
-    // Dashboard
     liveEvent:"நேரடி நிகழ்வு · நேரடி ஒத்திசைவு", giftBreakdown:"பரிசு விவரம்",
     recentEntries:"சமீபத்திய பதிவுகள்", noEntries:"பதிவுகள் இல்லை",
     cashTotal:"பண/UPI/வங்கி மொத்தம்", totalGuests:"மொத்த விருந்தினர்கள்",
     todayCollection:"இன்றைய வசூல்", highestGift:"அதிக பரிசு",
     physicalGifts:"பொருள் பரிசுகள்", payments:"கொடுப்பனவுகள்",
     allEntries:"அனைத்து பதிவுகள்", today:"இன்று", goldSilver:"தங்கம், வெள்ளி & மேலும்",
-    // Add Entry
     newEntry:"புதிய பதிவு", editEntry:"பதிவு திருத்து",
     recordGift:"பரிசை பதிவு செய்", updateGiftEntry:"பரிசு பதிவை புதுப்பி",
     guestName:"விருந்தினர் பெயர்", mobile:"கைபேசி", place:"இடம்",
@@ -136,35 +116,28 @@ const LANG = {
     saving:"சேமிக்கிறது...", saveEntry:"பதிவு சேமி →", update:"புதுப்பி ✓", cancel:"ரத்து செய்",
     guestNameRequired:"விருந்தினர் பெயர் தேவை", amountRequired:"தொகை தேவை",
     describeGift:"பரிசை விவரிக்கவும்",
-    // Records
     searchPlaceholder:"பெயர், இடம், பரிசு தேடு...",
     allTypes:"அனைத்து வகைகள்", newest:"புதியது முதல்", oldest:"பழையது முதல்",
     highestAmt:"அதிக ₹", nameAZ:"பெயர் A-Z", clear:"அழி",
     entriesFound:"பதிவுகள் கிடைத்தன", cashTotalLabel:"பண மொத்தம்:",
     noEntriesFound:"பதிவுகள் இல்லை",
-    // Receipt
     printReceipt:"ரசீது அச்சிடு", print:"அச்சிடு", close:"மூடு",
     giftAmount:"பரிசு தொகை", gift:"பரிசு", paperSize:"காகித அளவு:",
-    // Export
     summary:"சுருக்கம்", guests:"விருந்தினர்கள்", downloadCSV:"CSV பதிவிறக்கு",
     openPrint:"அச்சிடு", csvDesc:"Excel அல்லது Google Sheets-ல் திற",
     printDesc:"அனைத்து பதிவுகளுடன் அச்சிடக்கூடிய அறிக்கை",
-    // Events Hub
     activeEvents:"🟢 செயலில்", completedEvents:"✅ முடிந்தவை",
     newEvent:"புதிய நிகழ்வு", openEvent:"நிகழ்வு திற →", viewRecords:"பதிவுகள் பார் →",
     collected:"வசூலிக்கப்பட்டது", markDone:"✓ முடிந்தது", reopen:"↩ மீண்டும் திற",
     totalEvents:"மொத்த நிகழ்வுகள்", grandTotal:"மொத்த தொகை",
     noActiveEvents:"அனைத்து நிகழ்வுகளும் முடிந்தன!", createEvent:"+ நிகழ்வு உருவாக்கு",
     completedArchive:"முடிந்த நிகழ்வுகள் காப்பகம்",
-    markCompleted:"✅ முடிந்தது என குறி",
-    totalCollected:"மொத்த வசூல்",
-    // Event Form
+    markCompleted:"✅ முடிந்தது என குறி", totalCollected:"மொத்த வசூல்",
     eventType:"நிகழ்வு வகை", eventName:"நிகழ்வு பெயர்", eventDate:"நிகழ்வு தேதி",
     venue:"இடம்", brideName:"மணமகள் பெயர்", groomName:"மணமகன் பெயர்",
     familyName:"குடும்பப் பெயர்", receiptNote:"ரசீது குறிப்பு",
     sheetsWebhook:"Google Sheets Webhook (விருப்பத்தேர்வு)",
     createEventBtn:"நிகழ்வு உருவாக்கு →", updateEvent:"நிகழ்வு புதுப்பி ✓",
-    // Users
     userManagement:"பயனர் மேலாண்மை", addUser:"பயனர் சேர்",
     pendingApproval:"அனுமதி நிலுவையில்", allTab:"👥 அனைவரும்",
     pendingTab:"⏳ நிலுவையில்", approvedTab:"✅ அனுமதிக்கப்பட்டவர்கள்",
@@ -174,15 +147,12 @@ const LANG = {
     addedByAdmin:"🔧 நிர்வாகியால் சேர்க்கப்பட்டது",
     removeUser:"🗑️ நீக்கு", removeUserTitle:"பயனரை நீக்கவா?",
     removeWarning:"இந்த பயனர் நிரந்தரமாக நீக்கப்படுவார். அணுகல் உடனடியாக இழக்கப்படும்.",
-    // Notifications
     notifications:"🔔 அறிவிப்புகள்", markAllRead:"அனைத்தும் படித்தது என குறி",
     noNotifications:"அறிவிப்புகள் இல்லை",
-    // Pending page
     accountPending:"கணக்கு அனுமதி நிலுவையில்",
     waitingApproval:"உங்கள் கணக்கு நிர்வாகி அனுமதிக்காக காத்திருக்கிறது.",
     willUpdateAuto:"அனுமதிக்கப்பட்டவுடன் இந்தப் பக்கம் தானாக புதுப்பிக்கப்படும்.",
     registeredAs:"பதிவு செய்யப்பட்டது", waitingAdmin:"நிர்வாகி அனுமதிக்காக காத்திருக்கிறது...",
-    // Removed page
     accountRemoved:"கணக்கு நீக்கப்பட்டது", removedByAdmin:"நிர்வாகியால் நீக்கப்பட்டது.",
     wantToRejoin:"மீண்டும் சேர விரும்புகிறீர்களா?",
     reRegisterNote:"அதே மின்னஞ்சல் மற்றும் கடவுச்சொல்லுடன் மீண்டும் பதிவு செய்யலாம்.",
@@ -347,7 +317,16 @@ const StatCard = ({ icon, label, value, accent="#0F9DAD", sub, th }) => {
   );
 };
 
-// ─── Theme Toggle ─────────────────────────────────────────────────────
+
+// ─── Language Toggle ──────────────────────────────────────────────────
+const LangToggle = ({ lang, toggleLang }) => (
+  <button onClick={toggleLang}
+    style={{ display:"flex",alignItems:"center",gap:5,background:lang==="ta"?"#0F9DAD18":"transparent",border:`1px solid ${lang==="ta"?"#0F9DAD":"#94a3b8"}`,borderRadius:20,padding:"5px 12px",color:lang==="ta"?"#0F9DAD":"#64748b",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all 0.2s" }}>
+    {lang==="en" ? "🇮🇳 தமிழ்" : "🇬🇧 English"}
+  </button>
+);
+
+// ─── Theme Toggle ─────────────────────────────────────────────────
 const ThemeToggle = ({ theme, toggleTheme }) => (
   <button onClick={toggleTheme} style={{ display:"flex",alignItems:"center",gap:7,background:theme==="dark"?"#1f2937":"#e2e8f0",border:`1px solid ${theme==="dark"?"#374151":"#cbd5e1"}`,borderRadius:20,padding:"6px 14px",color:theme==="dark"?"#f9fafb":"#0f172a",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit" }}>
     <Icon name={theme==="dark"?"sun":"moon"} size={15}/>
