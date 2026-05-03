@@ -945,7 +945,7 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
     <div class="tagline">Track Every Blessing</div>
     <hr class="divider"/>
     <div class="event-name">${event.name}</div>
-    ${event.familyName?`<div style="font-size:10px">${event.familyName}</div>":""}
+    ${event.familyName?`<div style="font-size:10px">${event.familyName}</div>`:""}
     ${event.mahalName?`<div style="font-size:9px;letter-spacing:1px">🏛️ ${event.mahalName}</div>`:""}
     <div style="font-size:9px;margin-top:3px">Receipt #${entry.id?.slice(-6).toUpperCase()||"------"}</div>
   </div>
@@ -2408,67 +2408,4 @@ function MoiBee() {
                   )}
                 </div>
                 <div style={{ maxHeight:320,overflowY:"auto" }}>
-                  {notifications.length===0 && (
-                    <div style={{ padding:"32px 16px",textAlign:"center",color:t.textDim,fontSize:13 }}>No notifications yet</div>
-                  )}
-                  {notifications.map(n=>(
-                    <div key={n.id} onClick={async()=>{ if(!n.read) await updateDoc(doc(db,"notifications",n.id),{read:true}); }}
-                      style={{ padding:"12px 16px",borderBottom:`1px solid ${t.surface2}`,background:n.read?"transparent":n.type==="approved"?"#10b98108":"#ef444408",cursor:"pointer",transition:"background 0.15s" }}>
-                      <div style={{ display:"flex",alignItems:"flex-start",gap:10 }}>
-                        <div style={{ fontSize:20,flexShrink:0,marginTop:1 }}>
-                          {n.type==="approved"?"✅":n.type==="rejected"?"❌":"🔔"}
-                        </div>
-                        <div style={{ flex:1 }}>
-                          <div style={{ fontSize:13,fontWeight:700,color:t.text,marginBottom:2 }}>{n.title}</div>
-                          <div style={{ fontSize:12,color:t.textMuted,lineHeight:1.5 }}>{n.message}</div>
-                          <div style={{ fontSize:10,color:t.textDim,marginTop:4 }}>
-                            {n.createdAt?new Date(n.createdAt).toLocaleString("en-IN",{dateStyle:"medium",timeStyle:"short"}):""}
-                          </div>
-                        </div>
-                        {!n.read && <div style={{ width:8,height:8,borderRadius:"50%",background:n.type==="approved"?"#10b981":"#ef4444",flexShrink:0,marginTop:4 }}/>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ padding:"10px 16px",borderTop:`1px solid ${t.border}`,textAlign:"center" }}>
-                  <button onClick={()=>setShowNotifs(false)} style={{ background:"none",border:"none",color:t.textDim,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>Close</button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <LangToggle lang={lang} toggleLang={toggleLang}/>
-          <ThemeToggle theme={theme} toggleTheme={toggleTheme}/>
-          <button onClick={()=>signOut(auth)} title={T("signOut")}
-            style={{ display:"flex",alignItems:"center",gap:6,background:"transparent",border:`1px solid ${t.border}`,borderRadius:9,padding:"7px 10px",color:t.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit" }}>
-            <Icon name="logout" size={14}/>
-            <span className="root-user-name">{T("signOut")}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="root-content" style={{ maxWidth:1100,margin:"0 auto",padding:"24px 20px",width:"100%" }}>
-        {appPage==="events" && (
-          <EventsHub
-            theme={theme} toggleTheme={toggleTheme}
-            onSelectEvent={setActiveEvent}
-            onLogout={()=>signOut(auth)}
-            t={t} lang={lang} T={T}
-            isAdmin={isAdmin}
-            visibleEvents={visibleEvents}
-            allEvents={allEvents}
-            addToast={addToast}
-          />
-        )}
-        {appPage==="users" && isAdmin && (
-          <UserManagementPage t={t} lang={lang} T={T} addToast={addToast} allEvents={allEvents}/>
-        )}
-      </div>
-      <Toast toasts={toasts}/>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode><MoiBee/></React.StrictMode>
-)
+                  {notifications.le
