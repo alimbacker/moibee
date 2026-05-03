@@ -583,7 +583,7 @@ function EventsHub({ theme, toggleTheme, onSelectEvent, onLogout, t, lang, T, is
 
 // ─── Event Form Modal ─────────────────────────────────────────────────
 function EventFormModal({ open, editEvent, onClose, addToast, t }) {
-  const blank = { name:"", eventType:"marriage", eventDate:"", place:"", brideName:"", groomName:"", familyName:"", headerNote:"With Blessings & Best Wishes", googleSheetWebhook:"" };
+  const blank = { name:"", eventType:"marriage", eventDate:"", place:"", mahalName:"", brideName:"", groomName:"", familyName:"", headerNote:"With Blessings & Best Wishes", googleSheetWebhook:"" };
   const [form, setForm] = useState(blank);
   const [saving, setSaving] = useState(false);
   const set = (k,v) => setForm(f=>({...f,[k]:v}));
@@ -617,6 +617,7 @@ function EventFormModal({ open, editEvent, onClose, addToast, t }) {
         <Input label="Event Date" value={form.eventDate} onChange={v=>set("eventDate",v)} type="date" th={t}/>
         <Input label="Venue / Place" value={form.place} onChange={v=>set("place",v)} placeholder="Chennai" th={t}/>
       </div>
+      <Input label="🏛️ Mahal / Hall Name" value={form.mahalName||""} onChange={v=>set("mahalName",v)} placeholder="e.g. Vijaya Mahal, Sri Murugan Hall" th={t}/>
       {showNameFields && (
         <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px" }}>
           <Input label="Bride's Name" value={form.brideName} onChange={v=>set("brideName",v)} placeholder="Priya" th={t}/>
@@ -727,6 +728,7 @@ function EventApp({ event, theme, toggleTheme, onBack, t, lang, T }) {
             </div>
           </div>
           {event.eventDate && <div style={{ fontSize:11,color:t.textDim,marginTop:4 }}>📅 {new Date(event.eventDate).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</div>}
+          {event.mahalName && <div style={{ fontSize:11,color:"#0F9DAD",marginTop:3,fontWeight:600 }}>🏛️ {event.mahalName}</div>}
         </div>
         <nav style={{ flex:1,padding:"0 10px" }}>
           {navItems.map(item=>(
@@ -814,6 +816,7 @@ function DashboardPage({ entries, event, t, loading, T }) {
         <div style={{ fontSize:13,color:t.textMid,marginTop:5 }}>
           {event.brideName&&event.groomName&&`${event.brideName} ♥ ${event.groomName} · `}{event.familyName||""}{event.place&&` · 📍 ${event.place}`}
         </div>
+        {event.mahalName && <div style={{ fontSize:12,color:"#0F9DAD",fontWeight:600,marginTop:4 }}>🏛️ {event.mahalName}</div>}
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(175px,1fr))",gap:14,marginBottom:24 }}>
         <StatCard icon="money"    label="Cash/UPI/Bank Total" value={formatCurrency(total)}      accent="#0F9DAD" sub={`${moneyEntries.length} payments`}  th={t}/>
@@ -850,7 +853,7 @@ function DashboardPage({ entries, event, t, loading, T }) {
               <div key={e.id} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:`1px solid ${t.surface2}` }}>
                 <div>
                   <div style={{ fontSize:13,fontWeight:600,color:t.text }}>{e.name}</div>
-                  <div style={{ fontSize:11,color:t.textMuted }}>{e.place||""}  <span style={{ color:giftColor(gt) }}>{giftLabel(gt)}</span></div>
+                  <div style={{ fontSize:11,color:t.textMuted }}>{e.place||""}{e.street?` · ${e.street}`:""} <span style={{ color:giftColor(gt) }}>{giftLabel(gt)}</span></div>
                 </div>
                 {money?<span style={{ fontSize:13,fontWeight:700,color:"#0F9DAD" }}>{formatCurrency(e.amount)}</span>:<span style={{ fontSize:12,fontWeight:600,color:giftColor(gt) }}>{e.giftDesc||gt}</span>}
               </div>
@@ -865,7 +868,7 @@ function DashboardPage({ entries, event, t, loading, T }) {
 // ─── ADD ENTRY ────────────────────────────────────────────────────────
 function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry, setPage, event, t, T }) {
   if(!T) T = (k)=>k;
-  const blank={name:"",mobile:"",place:"",giftType:"Cash",amount:"",giftDesc:"",giftWeight:"",giftUnit:"g",notes:""};
+  const blank={name:"",mobile:"",place:"",street:"",giftType:"Cash",amount:"",giftDesc:"",giftWeight:"",giftUnit:"g",notes:""};
   const [form,      setForm]      = useState(()=>editEntry?{...blank,...editEntry}:blank);
   const [saving,    setSaving]    = useState(false);
   const [savedEntry,setSavedEntry]= useState(null);  // triggers print modal
@@ -942,7 +945,8 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
     <div class="tagline">Track Every Blessing</div>
     <hr class="divider"/>
     <div class="event-name">${event.name}</div>
-    ${event.familyName?`<div style="font-size:10px">${event.familyName}</div>`:""}
+    ${event.familyName?`<div style="font-size:10px">${event.familyName}</div>":""}
+    ${event.mahalName?`<div style="font-size:9px;letter-spacing:1px">🏛️ ${event.mahalName}</div>`:""}
     <div style="font-size:9px;margin-top:3px">Receipt #${entry.id?.slice(-6).toUpperCase()||"------"}</div>
   </div>
   <hr class="divider-solid"/>
@@ -1017,6 +1021,7 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
           <div style={{ gridColumn:"1/-1" }}><Input label={T("guestName")} value={form.name} onChange={v=>set("name",v)} placeholder="Full name" required th={t}/></div>
           <Input label={T("mobile")} value={form.mobile} onChange={v=>set("mobile",v)} placeholder="9876543210" type="tel" th={t}/>
           <Input label={T("place")} value={form.place} onChange={v=>set("place",v)} placeholder="Chennai" th={t}/>
+          <Input label="🏘️ Street Name" value={form.street||""} onChange={v=>set("street",v)} placeholder="e.g. Gandhi Street, 2nd Cross" th={t}/>
         </div>
         {/* Gift type grid */}
         <div style={{ marginBottom:18 }}>
@@ -1040,6 +1045,39 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
               </div>
             </div>
             <Input label="Amount (₹)" value={form.amount} onChange={v=>set("amount",v)} placeholder="Enter amount" type="number" required th={t}/>
+            {/* Currency Denomination Calculator */}
+            {form.amount > 0 && (()=>{
+              const amt = Number(form.amount);
+              if(isNaN(amt)||amt<=0) return null;
+              const denoms = [2000,500,200,100,50,20,10,5,2,1];
+              let remaining = amt;
+              const breakdown = [];
+              for(const d of denoms){
+                const count = Math.floor(remaining/d);
+                if(count>0){ breakdown.push({d,count}); remaining -= count*d; }
+              }
+              if(breakdown.length===0) return null;
+              const noteColors = {2000:"#6366f1",500:"#0F9DAD",200:"#f59e0b",100:"#10b981",50:"#ec4899",20:"#f97316",10:"#8b5cf6",5:"#64748b",2:"#94a3b8",1:"#cbd5e1"};
+              return (
+                <div style={{ background:t.surface2,border:`1px solid ${t.border}`,borderRadius:12,padding:"14px 16px",marginTop:8,marginBottom:4 }}>
+                  <div style={{ fontSize:11,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10 }}>
+                    💵 Currency Breakdown — {formatCurrency(amt)}
+                  </div>
+                  <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+                    {breakdown.map(({d,count})=>(
+                      <div key={d} style={{ display:"flex",alignItems:"center",gap:5,background:t.surface,border:`1.5px solid ${noteColors[d]||"#94a3b8"}33`,borderRadius:8,padding:"5px 10px" }}>
+                        <div style={{ width:28,height:16,background:`${noteColors[d]||"#94a3b8"}22`,border:`1px solid ${noteColors[d]||"#94a3b8"}66`,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:800,color:noteColors[d]||"#94a3b8" }}>
+                          {d>=5?"₹"+d:"₹"+d}
+                        </div>
+                        <span style={{ fontSize:13,fontWeight:700,color:t.text }}>×{count}</span>
+                        <span style={{ fontSize:11,color:t.textMuted }}>=₹{(d*count).toLocaleString("en-IN")}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {remaining>0 && <div style={{ fontSize:11,color:"#ef4444",marginTop:6 }}>⚠️ ₹{remaining} cannot be broken into standard denominations</div>}
+                </div>
+              );
+            })()}
           </>
         )}
         {!isMoney&&(
@@ -1112,7 +1150,7 @@ function RecordsPage({ entries, addToast, setEditEntry, setPage, setReceiptEntry
         <div style={{ overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
           <table style={{ width:"100%",borderCollapse:"collapse" }}>
             <thead><tr style={{ background:t.surface2 }}>
-              {["#","Name","Place","Mobile","Type","Amount / Gift","Date",""].map(h=><th key={h} style={{ padding:"11px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap" }}>{h}</th>)}
+              {["#","Name","Place","Street","Mobile","Type","Amount / Gift","Date",""].map(h=><th key={h} style={{ padding:"11px 14px",textAlign:"left",fontSize:11,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap" }}>{h}</th>)}
             </tr></thead>
             <tbody>
               {filtered.length===0&&<tr><td colSpan={8} style={{ textAlign:"center",padding:"44px 16px",color:t.textDim,fontSize:14 }}>No entries found</td></tr>}
@@ -1124,6 +1162,7 @@ function RecordsPage({ entries, addToast, setEditEntry, setPage, setReceiptEntry
                   <td style={{ padding:"11px 14px",color:t.textDim,fontSize:12 }}>{i+1}</td>
                   <td style={{ padding:"11px 14px",fontWeight:600,color:t.text,fontSize:13 }}>{e.name}</td>
                   <td style={{ padding:"11px 14px",color:t.textMid,fontSize:12 }}>{e.place||"—"}</td>
+                  <td style={{ padding:"11px 14px",color:t.textMid,fontSize:12 }}>{e.street||"—"}</td>
                   <td style={{ padding:"11px 14px",color:t.textMid,fontSize:12 }}>{e.mobile||"—"}</td>
                   <td style={{ padding:"11px 14px" }}><span style={{ background:`${clr}18`,color:clr,borderRadius:6,padding:"3px 8px",fontSize:11,fontWeight:700 }}>{giftLabel(gt)}</span></td>
                   <td style={{ padding:"11px 14px",fontSize:12 }}>
@@ -1346,7 +1385,7 @@ function ExportPage({ entries, event, addToast, t, T }) {
   const total=moneyEntries.reduce((s,e)=>s+Number(e.amount||0),0);
 
   const exportCSV=()=>{
-    const h=["#","Name","Mobile","Place","Gift Type","Amount (₹)","Gift Description","Weight","Unit","Date","Notes"];
+    const h=["#","Name","Mobile","Place","Street","Gift Type","Amount (₹)","Gift Description","Weight","Unit","Date","Notes"];
     const rows=entries.map((e,i)=>[i+1,e.name,e.mobile||"",e.place||"",e.giftType||e.mode,e.amount||"",e.giftDesc||"",e.giftWeight||"",e.giftUnit||"",e.date?new Date(e.date).toLocaleDateString("en-IN"):"",e.notes||""]);
     const csv=[h,...rows].map(r=>r.map(c=>`"${c}"`).join(",")).join("\n");
     const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
@@ -1362,7 +1401,7 @@ function ExportPage({ entries, event, addToast, t, T }) {
     const html=`<!DOCTYPE html><html><head><title>${event.name}</title>
     <style>body{font-family:Georgia,serif;margin:0;padding:20px;background:#fff;color:#1a1a1a}h1{color:#0F9DAD;font-size:24px}.st{display:inline-block;background:#f0fafa;border:1px solid #0F9DAD33;border-radius:8px;padding:10px 18px;text-align:center;margin:0 10px 14px 0}.sv{font-size:20px;font-weight:900;color:#0F9DAD}.sl{font-size:11px;color:#666;text-transform:uppercase}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#0F9DAD;color:#fff;padding:9px 11px;text-align:left}td{padding:8px 11px;border-bottom:1px solid #eee;vertical-align:top}tr:nth-child(even){background:#f8f8f8}.footer{margin-top:20px;text-align:center;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:12px}</style>
     </head><body><h1>🐝 ${event.name}</h1>
-    <div style="font-size:13px;color:#555;margin-bottom:16px">${eventLabel(event.eventType)} · ${event.familyName||""} · Exported ${new Date().toLocaleDateString("en-IN")}</div>
+    <div style="font-size:13px;color:#555;margin-bottom:16px">${eventLabel(event.eventType)} · ${event.familyName||""} ${event.mahalName?"· 🏛️ "+event.mahalName:""} · Exported ${new Date().toLocaleDateString("en-IN")}</div>
     <div><div class="st"><div class="sv">${formatCurrency(total)}</div><div class="sl">Cash Total</div></div><div class="st"><div class="sv">${entries.length}</div><div class="sl">Guests</div></div><div class="st"><div class="sv">${giftEntries.length}</div><div class="sl">Gifts</div></div></div>
     <table><thead><tr><th>#</th><th>Name</th><th>Place</th><th>Mobile</th><th>Type</th><th>Amount/Gift</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="footer">🐝 Powered by AllBee Solutions · MoiBee — Track Every Blessing</div></body></html>`;
@@ -1445,6 +1484,7 @@ function EventSettingsPage({ event, addToast, t }) {
           </div>
         )}
         <Input label="Family Name" value={form.familyName||""} onChange={v=>set("familyName",v)} th={t}/>
+        <Input label="🏛️ Mahal / Hall Name" value={form.mahalName||""} onChange={v=>set("mahalName",v)} placeholder="e.g. Vijaya Mahal" th={t}/>
         <Input label="Receipt Note" value={form.headerNote||""} onChange={v=>set("headerNote",v)} th={t}/>
         <Input label="Google Sheets Webhook" value={form.googleSheetWebhook||""} onChange={v=>set("googleSheetWebhook",v)} placeholder="https://script.google.com/macros/s/.../exec" th={t}/>
         <button onClick={handleSave} disabled={saving} style={{ width:"100%",background:saving?t.border:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",borderRadius:11,padding:"13px 0",color:saving?t.textMuted:"#fff",fontSize:14,fontWeight:700,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit" }}>
