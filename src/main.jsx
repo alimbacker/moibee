@@ -865,6 +865,170 @@ function DashboardPage({ entries, event, t, loading, T }) {
   );
 }
 
+// ─── Currency Denomination Calculator ────────────────────────────────
+function DenomCalc({ amount, onAmountChange, t }) {
+  // Notes & coins in circulation (no ₹2000 - withdrawn, no ₹2 coin - rare)
+  const DENOMS = [
+    { value:500,  label:"₹500",  color:"#0F9DAD", type:"note" },
+    { value:200,  label:"₹200",  color:"#f59e0b", type:"note" },
+    { value:100,  label:"₹100",  color:"#10b981", type:"note" },
+    { value:50,   label:"₹50",   color:"#6366f1", type:"note" },
+    { value:20,   label:"₹20",   color:"#f97316", type:"note" },
+    { value:10,   label:"₹10",   color:"#8b5cf6", type:"coin" },
+    { value:5,    label:"₹5",    color:"#ec4899", type:"coin" },
+    { value:1,    label:"₹1",    color:"#64748b", type:"coin" },
+  ];
+
+  // Auto-calculate counts from amount
+  const autoCalc = (amt) => {
+    const counts = {};
+    let remaining = Math.round(amt);
+    for(const d of DENOMS){
+      counts[d.value] = Math.floor(remaining / d.value);
+      remaining -= counts[d.value] * d.value;
+    }
+    return counts;
+  };
+
+  const [counts, setCounts] = useState(()=> amount > 0 ? autoCalc(amount) : Object.fromEntries(DENOMS.map(d=>[d.value,0])));
+  const [mode, setMode] = useState("auto"); // "auto" | "manual"
+
+  // When amount changes externally (typed), recalc in auto mode
+  useEffect(()=>{
+    if(mode==="auto"){
+      setCounts(amount > 0 ? autoCalc(amount) : Object.fromEntries(DENOMS.map(d=>[d.value,0])));
+    }
+  },[amount, mode]);
+
+  const manualTotal = DENOMS.reduce((s,d)=>s+(counts[d.value]||0)*d.value, 0);
+  const totalPieces = DENOMS.reduce((s,d)=>s+(counts[d.value]||0), 0);
+
+  const updateCount = (val, delta) => {
+    const next = Math.max(0, (counts[val]||0) + delta);
+    const newCounts = {...counts, [val]: next};
+    setCounts(newCounts);
+    if(mode==="manual"){
+      const newTotal = DENOMS.reduce((s,d)=>s+(newCounts[d.value]||0)*d.value, 0);
+      onAmountChange(newTotal);
+    }
+  };
+
+  const switchToManual = () => {
+    setMode("manual");
+    setCounts(amount > 0 ? autoCalc(amount) : Object.fromEntries(DENOMS.map(d=>[d.value,0])));
+  };
+
+  const resetAll = () => {
+    setCounts(Object.fromEntries(DENOMS.map(d=>[d.value,0])));
+    onAmountChange(0);
+  };
+
+  if(amount <= 0 && mode === "auto") return (
+    <div style={{ marginBottom:8 }}>
+      <button onClick={switchToManual}
+        style={{ width:"100%",padding:"10px",borderRadius:10,border:`1.5px dashed ${t.border}`,background:"transparent",color:t.textMuted,cursor:"pointer",fontFamily:"inherit",fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",gap:8 }}>
+        💵 Count notes manually instead
+      </button>
+    </div>
+  );
+
+  const notes = DENOMS.filter(d=>d.type==="note");
+  const coins = DENOMS.filter(d=>d.type==="coin");
+
+  return (
+    <div style={{ background:t.surface2,border:`1.5px solid ${t.border}`,borderRadius:14,padding:"14px 16px",marginTop:6,marginBottom:8 }}>
+      {/* Header */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12 }}>
+        <div style={{ fontSize:12,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:"0.07em" }}>
+          💵 Currency Breakdown
+        </div>
+        <div style={{ display:"flex",gap:6 }}>
+          <button onClick={()=>setMode("auto")}
+            style={{ padding:"4px 10px",borderRadius:20,border:`1px solid ${mode==="auto"?"#0F9DAD":t.border}`,background:mode==="auto"?"#0F9DAD18":"transparent",color:mode==="auto"?"#0F9DAD":t.textMuted,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+            Auto
+          </button>
+          <button onClick={switchToManual}
+            style={{ padding:"4px 10px",borderRadius:20,border:`1px solid ${mode==="manual"?"#f59e0b":t.border}`,background:mode==="manual"?"#f59e0b18":"transparent",color:mode==="manual"?"#f59e0b":t.textMuted,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>
+            Manual
+          </button>
+          {mode==="manual" && <button onClick={resetAll} style={{ padding:"4px 10px",borderRadius:20,border:`1px solid ${t.border}`,background:"transparent",color:"#ef4444",fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit" }}>Reset</button>}
+        </div>
+      </div>
+
+      {/* Notes section */}
+      <div style={{ fontSize:10,fontWeight:700,color:t.textDim,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7 }}>Notes</div>
+      <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:7,marginBottom:12 }}>
+        {notes.map(d=>{
+          const cnt = counts[d.value]||0;
+          const subtotal = cnt * d.value;
+          return (
+            <div key={d.value} style={{ background:t.surface,border:`1.5px solid ${cnt>0?d.color:t.border}`,borderRadius:10,padding:"8px 10px",transition:"border-color 0.15s" }}>
+              <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:5 }}>
+                <div style={{ background:`${d.color}18`,border:`1px solid ${d.color}44`,borderRadius:5,padding:"2px 7px",fontSize:11,fontWeight:800,color:d.color }}>
+                  {d.label}
+                </div>
+                {cnt > 0 && <div style={{ fontSize:10,color:d.color,fontWeight:700 }}>₹{subtotal.toLocaleString("en-IN")}</div>}
+              </div>
+              <div style={{ display:"flex",alignItems:"center",gap:6,justifyContent:"space-between" }}>
+                <button onClick={()=>updateCount(d.value,-1)} disabled={cnt===0}
+                  style={{ width:26,height:26,borderRadius:"50%",border:`1px solid ${t.border}`,background:cnt===0?t.surface2:t.inputBg,color:cnt===0?t.textDim:t.text,cursor:cnt===0?"not-allowed":"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>−</button>
+                <span style={{ fontSize:16,fontWeight:800,color:cnt>0?d.color:t.textMid,minWidth:24,textAlign:"center" }}>{cnt}</span>
+                <button onClick={()=>updateCount(d.value,1)}
+                  style={{ width:26,height:26,borderRadius:"50%",border:`1px solid ${d.color}`,background:`${d.color}18`,color:d.color,cursor:"pointer",fontSize:16,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>+</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Coins section */}
+      <div style={{ fontSize:10,fontWeight:700,color:t.textDim,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7 }}>Coins</div>
+      <div style={{ display:"flex",gap:7,flexWrap:"wrap",marginBottom:12 }}>
+        {coins.map(d=>{
+          const cnt = counts[d.value]||0;
+          return (
+            <div key={d.value} style={{ display:"flex",alignItems:"center",gap:7,background:t.surface,border:`1.5px solid ${cnt>0?d.color:t.border}`,borderRadius:24,padding:"5px 12px",transition:"border-color 0.15s" }}>
+              <span style={{ fontSize:12,fontWeight:800,color:d.color }}>{d.label}</span>
+              <button onClick={()=>updateCount(d.value,-1)} disabled={cnt===0}
+                style={{ width:22,height:22,borderRadius:"50%",border:`1px solid ${t.border}`,background:cnt===0?"transparent":t.surface2,color:cnt===0?t.textDim:t.text,cursor:cnt===0?"not-allowed":"pointer",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center" }}>−</button>
+              <span style={{ fontSize:14,fontWeight:800,color:cnt>0?d.color:t.textMid,minWidth:18,textAlign:"center" }}>{cnt}</span>
+              <button onClick={()=>updateCount(d.value,1)}
+                style={{ width:22,height:22,borderRadius:"50%",border:`1px solid ${d.color}`,background:`${d.color}18`,color:d.color,cursor:"pointer",fontSize:14,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center" }}>+</button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 12px",background:t.surface,borderRadius:10,border:`1px solid ${t.border}` }}>
+        <div style={{ display:"flex",gap:16 }}>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:18,fontWeight:900,color:"#0F9DAD" }}>{formatCurrency(mode==="manual"?manualTotal:amount)}</div>
+            <div style={{ fontSize:10,color:t.textMuted }}>Total Amount</div>
+          </div>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:18,fontWeight:900,color:t.text }}>{totalPieces}</div>
+            <div style={{ fontSize:10,color:t.textMuted }}>Total Pieces</div>
+          </div>
+        </div>
+        {mode==="auto" && amount > 0 && (
+          <div style={{ fontSize:11,color:t.textDim,textAlign:"right",maxWidth:120 }}>
+            Tap <b style={{ color:"#f59e0b" }}>Manual</b> to count notes yourself
+          </div>
+        )}
+        {mode==="manual" && (
+          <div style={{ textAlign:"right" }}>
+            <div style={{ fontSize:11,color:t.textDim,marginBottom:3 }}>Manual count</div>
+            <div style={{ fontSize:12,fontWeight:700,color:manualTotal!==amount?"#f59e0b":"#10b981" }}>
+              {manualTotal!==amount ? `₹${Math.abs(manualTotal-amount).toLocaleString("en-IN")} ${manualTotal>amount?"over":"short"}` : "✓ Matches"}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── ADD ENTRY ────────────────────────────────────────────────────────
 function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry, setPage, event, t, T }) {
   if(!T) T = (k)=>k;
@@ -1045,39 +1209,7 @@ function AddEntryPage({ addEntry, updateEntry, addToast, editEntry, setEditEntry
               </div>
             </div>
             <Input label="Amount (₹)" value={form.amount} onChange={v=>set("amount",v)} placeholder="Enter amount" type="number" required th={t}/>
-            {/* Currency Denomination Calculator */}
-            {form.amount > 0 && (()=>{
-              const amt = Number(form.amount);
-              if(isNaN(amt)||amt<=0) return null;
-              const denoms = [2000,500,200,100,50,20,10,5,2,1];
-              let remaining = amt;
-              const breakdown = [];
-              for(const d of denoms){
-                const count = Math.floor(remaining/d);
-                if(count>0){ breakdown.push({d,count}); remaining -= count*d; }
-              }
-              if(breakdown.length===0) return null;
-              const noteColors = {2000:"#6366f1",500:"#0F9DAD",200:"#f59e0b",100:"#10b981",50:"#ec4899",20:"#f97316",10:"#8b5cf6",5:"#64748b",2:"#94a3b8",1:"#cbd5e1"};
-              return (
-                <div style={{ background:t.surface2,border:`1px solid ${t.border}`,borderRadius:12,padding:"14px 16px",marginTop:8,marginBottom:4 }}>
-                  <div style={{ fontSize:11,fontWeight:700,color:t.textMuted,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10 }}>
-                    💵 Currency Breakdown — {formatCurrency(amt)}
-                  </div>
-                  <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
-                    {breakdown.map(({d,count})=>(
-                      <div key={d} style={{ display:"flex",alignItems:"center",gap:5,background:t.surface,border:`1.5px solid ${noteColors[d]||"#94a3b8"}33`,borderRadius:8,padding:"5px 10px" }}>
-                        <div style={{ width:28,height:16,background:`${noteColors[d]||"#94a3b8"}22`,border:`1px solid ${noteColors[d]||"#94a3b8"}66`,borderRadius:3,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:800,color:noteColors[d]||"#94a3b8" }}>
-                          {d>=5?"₹"+d:"₹"+d}
-                        </div>
-                        <span style={{ fontSize:13,fontWeight:700,color:t.text }}>×{count}</span>
-                        <span style={{ fontSize:11,color:t.textMuted }}>=₹{(d*count).toLocaleString("en-IN")}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {remaining>0 && <div style={{ fontSize:11,color:"#ef4444",marginTop:6 }}>⚠️ ₹{remaining} cannot be broken into standard denominations</div>}
-                </div>
-              );
-            })()}
+            <DenomCalc amount={Number(form.amount)||0} onAmountChange={v=>set("amount",v)} t={t}/>
           </>
         )}
         {!isMoney&&(
