@@ -2846,4 +2846,3 @@ function MoiBee() {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode><MoiBee/></React.StrictMode>
 )
-
