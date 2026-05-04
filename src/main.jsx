@@ -664,44 +664,36 @@ function AIAssistant({ entries, event, lang, t }) {
     moneyEntries.forEach(e=>{ const k=e.giftType||e.mode; byMode[k]=(byMode[k]||0)+Number(e.amount||0); });
     const byStreet     = {};
     entries.forEach(e=>{ if(e.street){ byStreet[e.street]=(byStreet[e.street]||0)+Number(e.amount||0); }});
-    const highest      = moneyEntries.sort((a,b)=>Number(b.amount)-Number(a.amount)).slice(0,3);
+    const highest      = [...moneyEntries].sort((a,b)=>Number(b.amount)-Number(a.amount)).slice(0,3);
     const today        = new Date().toISOString().slice(0,10);
     const todayEntries = entries.filter(e=>e.date?.slice(0,10)===today);
     const todayTotal   = todayEntries.filter(e=>["Cash","UPI","Bank"].includes(e.giftType||e.mode)).reduce((s,e)=>s+Number(e.amount||0),0);
-
-    return `
-EVENT: ${event?.name || "Unknown"}
-Type: ${event?.eventType || ""}
-Family: ${event?.familyName || ""}
-Mahal: ${event?.mahalName || ""}
-Place: ${event?.place || ""}
-Date: ${event?.eventDate || ""}
-
-SUMMARY:
-- Total entries: ${entries.length}
-- Total cash collected: ₹${total.toLocaleString("en-IN")}
-- Cash: ₹${(byMode.Cash||0).toLocaleString("en-IN")}
-- UPI: ₹${(byMode.UPI||0).toLocaleString("en-IN")}
-- Bank: ₹${(byMode.Bank||0).toLocaleString("en-IN")}
-- Physical gifts: ${giftEntries.length}
-- Today's entries: ${todayEntries.length} (₹${todayTotal.toLocaleString("en-IN")})
-
-TOP 3 GIVERS:
-${highest.map((e,i)=>`${i+1}. ${e.name} - ₹${Number(e.amount).toLocaleString("en-IN")} (${e.place||""}${e.street?", "+e.street:""})`).join("
-")}
-
-STREET-WISE TOTAL:
-${Object.entries(byStreet).map(([s,a])=>`${s}: ₹${a.toLocaleString("en-IN")}`).join("
-") || "No street data"}
-
-ALL ENTRIES (last 30):
-${entries.slice(0,30).map(e=>{
-  const gt=e.giftType||e.mode;
-  const money=["Cash","UPI","Bank"].includes(gt);
-  return `- ${e.name} | ${e.place||""}${e.street?"/"+e.street:""} | ${gt} | ${money?"₹"+Number(e.amount).toLocaleString("en-IN"):e.giftDesc||gt}${e.giftWeight?" ("+e.giftWeight+(e.giftUnit||"g")+")":""}`;
-}).join("
-")}
-    `.trim();
+    const top3    = highest.map((e,i)=>(i+1)+". "+e.name+" - Rs."+Number(e.amount).toLocaleString("en-IN")+" ("+(e.place||"")+(e.street?", "+e.street:"")+")").join("\n");
+    const streets = Object.entries(byStreet).map(([s,a])=>s+": Rs."+a.toLocaleString("en-IN")).join("\n") || "No street data";
+    const allE    = entries.slice(0,30).map(e=>{
+      const gt=e.giftType||e.mode;
+      const money=["Cash","UPI","Bank"].includes(gt);
+      return "- "+e.name+" | "+(e.place||"")+(e.street?"/"+e.street:"")+" | "+gt+" | "+(money?"Rs."+Number(e.amount).toLocaleString("en-IN"):e.giftDesc||gt)+(e.giftWeight?" ("+e.giftWeight+(e.giftUnit||"g")+")":"");
+    }).join("\n");
+    return [
+      "EVENT: "+(event?.name||"Unknown"),
+      "Type: "+(event?.eventType||""),
+      "Family: "+(event?.familyName||""),
+      "Mahal: "+(event?.mahalName||""),
+      "Place: "+(event?.place||""),
+      "Date: "+(event?.eventDate||""),
+      "","SUMMARY:",
+      "- Total entries: "+entries.length,
+      "- Total cash: Rs."+total.toLocaleString("en-IN"),
+      "- Cash: Rs."+(byMode.Cash||0).toLocaleString("en-IN"),
+      "- UPI: Rs."+(byMode.UPI||0).toLocaleString("en-IN"),
+      "- Bank: Rs."+(byMode.Bank||0).toLocaleString("en-IN"),
+      "- Physical gifts: "+giftEntries.length,
+      "- Today: "+todayEntries.length+" entries (Rs."+todayTotal.toLocaleString("en-IN")+")",
+      "","TOP 3 GIVERS:", top3,
+      "","STREET-WISE:", streets,
+      "","ALL ENTRIES (last 30):", allE,
+    ].join("\n");
   };
 
   const sendMessage = async () => {
