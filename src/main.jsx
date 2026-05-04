@@ -638,6 +638,255 @@ function EventFormModal({ open, editEvent, onClose, addToast, t }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// ─── AI ASSISTANT (Claude-powered floating chat) ──────────────────────
+// ══════════════════════════════════════════════════════════════════════
+function AIAssistant({ entries, event, lang, t }) {
+  const [open,     setOpen]     = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input,    setInput]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+  const bottomRef = useRef(null);
+  const inputRef  = useRef(null);
+
+  const isTamil = lang === "ta";
+
+  // Scroll to bottom on new message
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({ behavior:"smooth" }); },[messages]);
+  useEffect(()=>{ if(open) setTimeout(()=>inputRef.current?.focus(), 100); },[open]);
+
+  // Build event context for Claude
+  const buildContext = () => {
+    if(!entries || entries.length === 0) return "No entries yet for this event.";
+    const moneyEntries = entries.filter(e=>["Cash","UPI","Bank"].includes(e.giftType||e.mode));
+    const giftEntries  = entries.filter(e=>!["Cash","UPI","Bank"].includes(e.giftType||e.mode));
+    const total        = moneyEntries.reduce((s,e)=>s+Number(e.amount||0),0);
+    const byMode       = {};
+    moneyEntries.forEach(e=>{ const k=e.giftType||e.mode; byMode[k]=(byMode[k]||0)+Number(e.amount||0); });
+    const byStreet     = {};
+    entries.forEach(e=>{ if(e.street){ byStreet[e.street]=(byStreet[e.street]||0)+Number(e.amount||0); }});
+    const highest      = moneyEntries.sort((a,b)=>Number(b.amount)-Number(a.amount)).slice(0,3);
+    const today        = new Date().toISOString().slice(0,10);
+    const todayEntries = entries.filter(e=>e.date?.slice(0,10)===today);
+    const todayTotal   = todayEntries.filter(e=>["Cash","UPI","Bank"].includes(e.giftType||e.mode)).reduce((s,e)=>s+Number(e.amount||0),0);
+
+    return `
+EVENT: ${event?.name || "Unknown"}
+Type: ${event?.eventType || ""}
+Family: ${event?.familyName || ""}
+Mahal: ${event?.mahalName || ""}
+Place: ${event?.place || ""}
+Date: ${event?.eventDate || ""}
+
+SUMMARY:
+- Total entries: ${entries.length}
+- Total cash collected: ₹${total.toLocaleString("en-IN")}
+- Cash: ₹${(byMode.Cash||0).toLocaleString("en-IN")}
+- UPI: ₹${(byMode.UPI||0).toLocaleString("en-IN")}
+- Bank: ₹${(byMode.Bank||0).toLocaleString("en-IN")}
+- Physical gifts: ${giftEntries.length}
+- Today's entries: ${todayEntries.length} (₹${todayTotal.toLocaleString("en-IN")})
+
+TOP 3 GIVERS:
+${highest.map((e,i)=>`${i+1}. ${e.name} - ₹${Number(e.amount).toLocaleString("en-IN")} (${e.place||""}${e.street?", "+e.street:""})`).join("
+")}
+
+STREET-WISE TOTAL:
+${Object.entries(byStreet).map(([s,a])=>`${s}: ₹${a.toLocaleString("en-IN")}`).join("
+") || "No street data"}
+
+ALL ENTRIES (last 30):
+${entries.slice(0,30).map(e=>{
+  const gt=e.giftType||e.mode;
+  const money=["Cash","UPI","Bank"].includes(gt);
+  return `- ${e.name} | ${e.place||""}${e.street?"/"+e.street:""} | ${gt} | ${money?"₹"+Number(e.amount).toLocaleString("en-IN"):e.giftDesc||gt}${e.giftWeight?" ("+e.giftWeight+(e.giftUnit||"g")+")":""}`;
+}).join("
+")}
+    `.trim();
+  };
+
+  const sendMessage = async () => {
+    if(!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput("");
+    setMessages(prev=>[...prev, { role:"user", content:userMsg }]);
+    setLoading(true);
+
+    try {
+      const context = buildContext();
+      const systemPrompt = isTamil
+        ? `நீங்கள் MoiBee-ன் AI உதவியாளர். இது ஒரு திருமண பரிசு மற்றும் மொய் கண்காணிப்பு செயலி.
+கீழே உள்ள நிகழ்வு தரவை பயன்படுத்தி தமிழிலும் ஆங்கிலத்திலும் கேள்விகளுக்கு பதில் சொல்லுங்கள்.
+எப்போதும் தமிழிலேயே பதில் சொல்லுங்கள். சுருக்கமாகவும் தெளிவாகவும் பதில் சொல்லுங்கள்.
+
+நிகழ்வு தரவு:
+${context}`
+        : `You are the AI assistant for MoiBee, a wedding gift and contribution tracking app.
+Use the event data below to answer questions about entries, totals, guests, streets, etc.
+Be concise, friendly and helpful. Format numbers in Indian style (₹ with commas).
+Always respond in English unless the user writes in Tamil.
+
+Event Data:
+${context}`;
+
+      const history = messages.map(m=>({ role:m.role, content:m.content }));
+
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          system: systemPrompt,
+          messages: [...history, { role:"user", content:userMsg }],
+        })
+      });
+
+      const data = await response.json();
+      const reply = data.content?.[0]?.text || (isTamil ? "மன்னிக்கவும், பதில் கிடைக்கவில்லை." : "Sorry, I couldn't get a response.");
+      setMessages(prev=>[...prev, { role:"assistant", content:reply }]);
+    } catch(err) {
+      setMessages(prev=>[...prev, { role:"assistant", content: isTamil ? "பிழை ஏற்பட்டது. மீண்டும் முயற்சிக்கவும்." : "Error: "+err.message }]);
+    }
+    setLoading(false);
+  };
+
+  const suggestions = isTamil ? [
+    "மொத்த வசூல் எவ்வளவு?",
+    "யார் அதிக தொகை கொடுத்தார்?",
+    "தெரு வாரியாக சுருக்கம் சொல்",
+    "இன்று எத்தனை பேர் வந்தார்?",
+  ] : [
+    "What is the total collection?",
+    "Who gave the highest amount?",
+    "Give street-wise summary",
+    "How many entries today?",
+  ];
+
+  return (
+    <>
+      {/* Floating bubble */}
+      <button onClick={()=>setOpen(v=>!v)}
+        style={{ position:"fixed",bottom:24,right:24,width:56,height:56,borderRadius:"50%",background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",border:"none",cursor:"pointer",boxShadow:"0 4px 20px rgba(15,157,173,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:800,transition:"transform 0.2s",transform:open?"scale(0.9)":"scale(1)" }}>
+        {open
+          ? <svg xmlns="http://www.w3.org/2000/svg" width={22} height={22} fill="none" viewBox="0 0 24 24" stroke="white"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+          : <svg xmlns="http://www.w3.org/2000/svg" width={24} height={24} fill="none" viewBox="0 0 24 24" stroke="white"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m1.636-6.364l.707.707M12 21v-1M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+        }
+        {messages.filter(m=>m.role==="assistant").length > 0 && !open && (
+          <div style={{ position:"absolute",top:-3,right:-3,width:16,height:16,borderRadius:"50%",background:"#10b981",border:"2px solid white",fontSize:9,color:"white",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800 }}>
+            {messages.filter(m=>m.role==="assistant").length}
+          </div>
+        )}
+      </button>
+
+      {/* Chat panel */}
+      {open && (
+        <div style={{ position:"fixed",bottom:90,right:24,width:340,maxWidth:"calc(100vw - 48px)",background:t.surface,border:`1px solid ${t.border}`,borderRadius:18,boxShadow:"0 16px 60px rgba(0,0,0,0.25)",zIndex:799,display:"flex",flexDirection:"column",maxHeight:"70vh",overflow:"hidden" }}>
+          {/* Header */}
+          <div style={{ padding:"14px 16px",borderBottom:`1px solid ${t.border}`,background:"linear-gradient(135deg,#0F9DAD18,#0F9DAD08)",display:"flex",alignItems:"center",gap:10 }}>
+            <div style={{ width:36,height:36,borderRadius:"50%",background:"linear-gradient(135deg,#0F9DAD,#0a7a87)",display:"flex",alignItems:"center",justifyContent:"center" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width={18} height={18} fill="none" viewBox="0 0 24 24" stroke="white"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m1.636-6.364l.707.707M12 21v-1M6.343 17.657l-.707.707m12.728 0l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize:14,fontWeight:700,color:t.text }}>MoiBee Assistant</div>
+              <div style={{ fontSize:11,color:"#0F9DAD",fontWeight:600 }}>{isTamil?"தமிழ் & English":"English & தமிழ்"} · Powered by Claude</div>
+            </div>
+            {messages.length > 0 && (
+              <button onClick={()=>setMessages([])} title="Clear chat"
+                style={{ marginLeft:"auto",background:"none",border:"none",color:t.textDim,cursor:"pointer",fontSize:18,padding:2 }}>🗑</button>
+            )}
+          </div>
+
+          {/* Messages */}
+          <div style={{ flex:1,overflowY:"auto",padding:"12px 14px",display:"flex",flexDirection:"column",gap:10,minHeight:120 }}>
+            {messages.length===0 && (
+              <div style={{ textAlign:"center",padding:"16px 0" }}>
+                <div style={{ fontSize:28,marginBottom:8 }}>👋</div>
+                <div style={{ fontSize:13,color:t.textMuted,marginBottom:14,lineHeight:1.6 }}>
+                  {isTamil ? `${event?.name||"நிகழ்வு"} பற்றி என்ன கேட்கலாம்?` : `Ask me anything about ${event?.name||"this event"}!`}
+                </div>
+                <div style={{ display:"flex",flexWrap:"wrap",gap:6,justifyContent:"center" }}>
+                  {suggestions.map(s=>(
+                    <button key={s} onClick={()=>{ setInput(s); setTimeout(()=>{ setInput(""); sendMessageWith(s); },50); }}
+                      style={{ background:t.surface2,border:`1px solid ${t.border}`,borderRadius:20,padding:"5px 12px",fontSize:11,color:t.textMid,cursor:"pointer",fontFamily:"inherit",textAlign:"left" }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {messages.map((m,i)=>(
+              <div key={i} style={{ display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start" }}>
+                <div style={{
+                  maxWidth:"85%",padding:"9px 13px",borderRadius:m.role==="user"?"16px 16px 4px 16px":"16px 16px 16px 4px",
+                  background:m.role==="user"?"linear-gradient(135deg,#0F9DAD,#0a7a87)":t.surface2,
+                  color:m.role==="user"?"#fff":t.text,
+                  fontSize:13,lineHeight:1.6,whiteSpace:"pre-wrap",wordBreak:"break-word"
+                }}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+            {loading && (
+              <div style={{ display:"flex",justifyContent:"flex-start" }}>
+                <div style={{ background:t.surface2,borderRadius:"16px 16px 16px 4px",padding:"10px 14px",display:"flex",gap:4,alignItems:"center" }}>
+                  {[0,1,2].map(i=>(
+                    <div key={i} style={{ width:7,height:7,borderRadius:"50%",background:"#0F9DAD",animation:`bounce 1s ${i*0.2}s infinite` }}/>
+                  ))}
+                  <style>{`@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}`}</style>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef}/>
+          </div>
+
+          {/* Input */}
+          <div style={{ padding:"10px 12px",borderTop:`1px solid ${t.border}`,display:"flex",gap:8,alignItems:"flex-end" }}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendMessage(); }}}
+              placeholder={isTamil?"கேள்வி கேளுங்கள்...":"Ask anything... (Enter to send)"}
+              rows={1}
+              style={{ flex:1,background:t.inputBg,border:`1.5px solid ${t.border}`,borderRadius:10,padding:"9px 12px",color:t.text,fontSize:13,outline:"none",resize:"none",fontFamily:"inherit",lineHeight:1.5,maxHeight:80,overflowY:"auto" }}
+              onFocus={e=>e.target.style.borderColor="#0F9DAD"}
+              onBlur={e=>e.target.style.borderColor=t.border}
+            />
+            <button onClick={sendMessage} disabled={!input.trim()||loading}
+              style={{ width:38,height:38,borderRadius:10,border:"none",background:input.trim()&&!loading?"linear-gradient(135deg,#0F9DAD,#0a7a87)":t.border,color:"#fff",cursor:input.trim()&&!loading?"pointer":"not-allowed",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"background 0.2s" }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  function sendMessageWith(msg) {
+    setMessages(prev=>[...prev, { role:"user", content:msg }]);
+    setLoading(true);
+    const context = buildContext();
+    const systemPrompt = isTamil
+      ? `நீங்கள் MoiBee-ன் AI உதவியாளர். நிகழ்வு தரவை பயன்படுத்தி தமிழில் பதில் சொல்லுங்கள்.
+
+நிகழ்வு தரவு:
+${context}`
+      : `You are the AI assistant for MoiBee. Use the event data to answer questions.
+
+Event Data:
+${context}`;
+    fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:1000, system:systemPrompt, messages:[{role:"user",content:msg}] })
+    }).then(r=>r.json()).then(data=>{
+      const reply = data.content?.[0]?.text || "Sorry, no response.";
+      setMessages(prev=>[...prev,{role:"assistant",content:reply}]);
+      setLoading(false);
+    }).catch(err=>{ setMessages(prev=>[...prev,{role:"assistant",content:"Error: "+err.message}]); setLoading(false); });
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // ─── EVENT APP (inside a single event) ───────────────────────────────
 // ══════════════════════════════════════════════════════════════════════
 function EventApp({ event, theme, toggleTheme, onBack, t, lang, T }) {
@@ -777,6 +1026,7 @@ function EventApp({ event, theme, toggleTheme, onBack, t, lang, T }) {
       </div>
 
       {receiptEntry && <ReceiptModal entry={receiptEntry} event={event} onClose={()=>setReceiptEntry(null)} t={t} T={T}/>}
+      <AIAssistant entries={entries} event={event} lang={lang} t={t}/>
       <Modal open={!!deleteConfirm} onClose={()=>setDeleteConfirm(null)} title="Confirm Delete" th={t}>
         <p style={{ color:t.textMid,marginTop:0 }}>Delete entry for <strong style={{ color:t.text }}>{deleteConfirm?.name}</strong>? This cannot be undone.</p>
         <div style={{ display:"flex",gap:12,justifyContent:"flex-end",marginTop:20 }}>
