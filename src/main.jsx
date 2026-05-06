@@ -1326,20 +1326,23 @@ function ReceiptModal({ entry, event, onClose, t }) {
   const [paperSize, setPaperSize] = useState("80mm"); // "58mm" | "80mm"
 
   const handlePrint = () => {
-    const width   = paperSize === "58mm" ? "54mm" : "76mm";
+    const width    = paperSize === "58mm" ? "54mm" : "76mm";
     const fontSize = paperSize === "58mm" ? "11px" : "13px";
     const bigFont  = paperSize === "58mm" ? "22px" : "28px";
     const midFont  = paperSize === "58mm" ? "13px" : "16px";
 
+    // Guest detail rows
     const rows = [
       ["Name",    entry.name],
       ["Mobile",  entry.mobile||""],
       ["Place",   entry.place||""],
+      ["Street",  entry.street||""],
       ["Type",    giftLabel(gt)],
       ["Date",    formatDate(entry.createdAt)],
       ...(entry.notes?[["Notes",entry.notes]]:[]),
-    ].filter(([,v])=>v&&v!=="—");
+    ].filter(([,v])=>v&&v!=="—"&&v!=="");
 
+    // Amount block
     const amtBlock = money
       ? `<div class="amt-box">
            <div class="amt-lbl">GIFT AMOUNT</div>
@@ -1352,69 +1355,128 @@ function ReceiptModal({ entry, event, onClose, t }) {
            ${entry.amount>0?`<div class="gift-sub">Est. ${formatCurrency(entry.amount)}</div>`:""}
          </div>`;
 
+    // Currency denomination breakdown
+    let denomBlock = "";
+    if(money && Number(entry.amount) > 0){
+      const DENOMS = [500,200,100,50,20,10,5,1];
+      let remaining = Number(entry.amount);
+      const breakdown = [];
+      for(const d of DENOMS){
+        const cnt = Math.floor(remaining/d);
+        if(cnt>0){ breakdown.push({d,cnt}); remaining -= cnt*d; }
+      }
+      if(breakdown.length > 0){
+        const notes = breakdown.filter(x=>x.d>=10);
+        const coins = breakdown.filter(x=>x.d<10);
+        const totalPieces = breakdown.reduce((s,x)=>s+x.cnt,0);
+        denomBlock = `
+  <hr class="divider"/>
+  <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;text-align:center;margin:4px 0">Currency Breakdown</div>
+  <table style="width:100%;border-collapse:collapse;font-size:${fontSize};margin:3px 0">
+    <tr style="border-bottom:1px solid #ccc">
+      <th style="text-align:left;padding:2px 0;color:#555;font-weight:normal">Denomination</th>
+      <th style="text-align:center;padding:2px 0;color:#555;font-weight:normal">Count</th>
+      <th style="text-align:right;padding:2px 0;color:#555;font-weight:normal">Subtotal</th>
+    </tr>
+    ${notes.length>0?`<tr><td colspan="3" style="font-size:9px;color:#777;padding:2px 0">Notes</td></tr>`:""}
+    ${notes.map(({d,cnt})=>`
+    <tr>
+      <td style="padding:2px 0;font-weight:700">Rs.${d}</td>
+      <td style="text-align:center;padding:2px 0">x${cnt}</td>
+      <td style="text-align:right;padding:2px 0;font-weight:700">Rs.${(d*cnt).toLocaleString("en-IN")}</td>
+    </tr>`).join("")}
+    ${coins.length>0?`<tr><td colspan="3" style="font-size:9px;color:#777;padding:2px 0">Coins</td></tr>`:""}
+    ${coins.map(({d,cnt})=>`
+    <tr>
+      <td style="padding:2px 0;font-weight:700">Rs.${d}</td>
+      <td style="text-align:center;padding:2px 0">x${cnt}</td>
+      <td style="text-align:right;padding:2px 0;font-weight:700">Rs.${(d*cnt).toLocaleString("en-IN")}</td>
+    </tr>`).join("")}
+    <tr style="border-top:1px solid #000">
+      <td style="padding:3px 0;font-weight:900">TOTAL</td>
+      <td style="text-align:center;padding:3px 0;font-weight:700">${totalPieces} pcs</td>
+      <td style="text-align:right;padding:3px 0;font-weight:900">${formatCurrency(entry.amount)}</td>
+    </tr>
+  </table>`;
+      }
+    }
+
     const html = `<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8"/>
-<title>Receipt</title>
+<title>Receipt - ${entry.name}</title>
 <style>
   @page { margin: 0; size: ${paperSize} auto; }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: ${fontSize};
-    color: #000;
-    background: #fff;
-    width: ${width};
-    padding: 4mm 3mm;
-  }
-  .center { text-align: center; }
-  .logo { font-size: ${midFont}; font-weight: 900; letter-spacing: 2px; }
-  .tagline { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
-  .event-name { font-size: ${midFont}; font-weight: 700; margin: 4px 0 1px; }
-  .family { font-size: 10px; }
-  .receipt-no { font-size: 9px; margin-top: 3px; }
-  .divider { border: none; border-top: 1px dashed #000; margin: 5px 0; }
-  .divider-solid { border: none; border-top: 1px solid #000; margin: 5px 0; }
-  .row { display: flex; justify-content: space-between; padding: 2px 0; font-size: ${fontSize}; }
-  .lbl { color: #555; flex-shrink: 0; margin-right: 6px; }
-  .val { font-weight: 700; text-align: right; word-break: break-word; }
-  .amt-box { text-align: center; margin: 6px 0; padding: 5px 0; border-top: 2px solid #000; border-bottom: 2px solid #000; }
-  .amt-lbl { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
-  .amt-val { font-size: ${bigFont}; font-weight: 900; letter-spacing: 1px; }
-  .gift-name { font-size: ${midFont}; font-weight: 900; }
-  .gift-sub { font-size: 10px; color: #333; margin-top: 2px; }
-  .note { text-align: center; font-size: 10px; margin: 5px 0; }
-  .footer { text-align: center; font-size: 9px; margin-top: 6px; letter-spacing: 1px; }
-  .stars { letter-spacing: 4px; font-size: 10px; }
+  body { font-family:'Courier New',Courier,monospace; font-size:${fontSize}; color:#000; background:#fff; width:${width}; padding:4mm 3mm; }
+  .center { text-align:center; }
+  .logo { font-size:${midFont}; font-weight:900; letter-spacing:3px; }
+  .tagline { font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-top:1px; }
+  .event-name { font-size:${midFont}; font-weight:900; margin:5px 0 2px; }
+  .sub-detail { font-size:10px; margin:1px 0; }
+  .receipt-no { font-size:9px; margin-top:4px; color:#444; }
+  .divider { border:none; border-top:1px dashed #000; margin:5px 0; }
+  .divider-solid { border:none; border-top:2px solid #000; margin:5px 0; }
+  .row { display:flex; justify-content:space-between; padding:2px 0; }
+  .lbl { color:#555; flex-shrink:0; margin-right:4px; }
+  .val { font-weight:700; text-align:right; word-break:break-word; max-width:60%; }
+  .amt-box { text-align:center; margin:5px 0; padding:6px 0; border-top:2px solid #000; border-bottom:2px solid #000; }
+  .amt-lbl { font-size:9px; letter-spacing:2px; text-transform:uppercase; margin-bottom:2px; }
+  .amt-val { font-size:${bigFont}; font-weight:900; }
+  .gift-name { font-size:${midFont}; font-weight:900; }
+  .gift-sub { font-size:10px; color:#333; margin-top:2px; }
+  .footer { text-align:center; font-size:9px; margin-top:6px; }
+  .stars { letter-spacing:3px; }
+  .note-line { text-align:center; font-size:10px; font-style:italic; margin:3px 0; }
+  .allbee { font-size:8px; letter-spacing:1px; margin-top:2px; color:#333; }
 </style>
 </head><body>
+
+  <!-- HEADER: MoiBee Brand -->
   <div class="center">
-    <div class="logo">★ moiBEE ★</div>
-    <div class="tagline">Track Every Blessing</div>
-    <hr class="divider"/>
+    <div class="logo">moiBEE</div>
+    <div class="tagline">★ Track Every Blessing ★</div>
+    <div class="allbee">Powered by AllBee Solutions</div>
+  </div>
+  <hr class="divider"/>
+
+  <!-- EVENT DETAILS -->
+  <div class="center">
     <div class="event-name">${event.name}</div>
-    ${event.familyName?`<div class="family">${event.familyName}</div>`:""}
+    ${event.familyName?`<div class="sub-detail">${event.familyName}</div>`:""}
+    ${event.mahalName?`<div class="sub-detail">🏛 ${event.mahalName}</div>`:""}
+    ${event.place?`<div class="sub-detail">📍 ${event.place}</div>`:""}
+    ${event.eventDate?`<div class="sub-detail">📅 ${new Date(event.eventDate).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</div>`:""}
     <div class="receipt-no">Receipt #${entry.id?.slice(-6).toUpperCase()||"------"}</div>
   </div>
   <hr class="divider-solid"/>
-  ${rows.map(([l,v])=>`
-    <div class="row">
-      <span class="lbl">${l}:</span>
-      <span class="val">${v}</span>
-    </div>`).join("")}
+
+  <!-- GUEST DETAILS -->
+  ${rows.map(([l,v])=>`<div class="row"><span class="lbl">${l}:</span><span class="val">${v}</span></div>`).join("")}
   <hr class="divider"/>
+
+  <!-- AMOUNT / GIFT -->
   ${amtBlock}
+
+  <!-- CURRENCY DENOMINATION -->
+  ${denomBlock}
+
   <hr class="divider"/>
-  ${event.headerNote?`<div class="note">${event.headerNote}</div>`:""}
+  <!-- BLESSING NOTE -->
+  ${event.headerNote?`<div class="note-line">${event.headerNote}</div>`:""}
+  ${event.brideName&&event.groomName?`<div class="note-line">${event.brideName} ♥ ${event.groomName}</div>`:""}
+
+  <!-- FOOTER -->
   <div class="footer">
-    <div class="stars">* * * * * * * * * *</div>
-    <div style="margin-top:3px">Powered by MoiBee</div>
-    <div>AllBee Solutions</div>
-    <div class="stars">* * * * * * * * * *</div>
+    <div class="stars">* * * * * * * * *</div>
+    <div style="margin-top:3px;font-weight:700">moiBEE</div>
+    <div class="allbee">AllBee Solutions | moibee.vercel.app</div>
+    <div class="stars">* * * * * * * * *</div>
   </div>
+
 </body></html>`;
 
-    const w = window.open("","_blank","width=300,height=600");
+    const w = window.open("","_blank","width=320,height=650");
     w.document.write(html);
     w.document.close();
     w.focus();
